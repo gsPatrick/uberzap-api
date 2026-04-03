@@ -1,0 +1,8 @@
+{
+    "name": "uberzap/api",
+    "description": "Uberzap Backend API",
+    "type": "project",
+    "require": {
+        "php": ">=7.4"
+    }
+}
