@@ -1,0 +1,174 @@
+<?php
+header("access-control-allow-origin: *");
+include("../bd/config.php");
+include("../classes/categorias.php");
+include("../classes/status_historico.php"); 
+include("../classes/dinamico_mapa.php");
+include("../classes/categorias_horarios.php");
+include("../classes/corridas.php");
+include("../classes/cidades.php");
+
+$ct = new cidades();
+$cidade_index = $_POST['cidade_index'];
+$cidade = $ct->getByIndex($cidade_index);
+$cidade_id = $cidade['id'];
+
+
+$nome_cliente = $_POST['nome_cliente'];
+$telefone_cliente = $_POST['telefone_cliente'];
+$endereco_partida = $_POST['endereco_partida'];
+$endereco_destino = $_POST['endereco_destino'];
+$metodo_pagamento = $_POST['metodo_pagamento'];
+$categoria_index = $_POST['categoria_index'] - 1;
+$img_user = $_POST['img_user'];
+
+
+$corridas = new corridas();
+
+//verifica se já existe uma corrida em aberto pra esse usuário
+$corrida_aberta = $corridas->getCorridaByWA($telefone_cliente);
+if($corrida_aberta){
+    header('Content-Type: application/json');
+    $retorno = array(
+        "id" => 0,
+        "status" => "erro",
+        "msg" => "corrida_aberta",
+    );
+    echo json_encode($retorno, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+$c = new categorias();
+$dm = new dinamico_mapa();
+$dh = new dinamico_horarios();
+$corridas = new corridas();
+$status_historico = new status_historico();
+
+$usar_maps = true;
+
+$categorias = $c->get_categorias($cidade_id, true);
+
+$dados_categoria = $categorias[$categoria_index];
+$categoria_id = $dados_categoria['id'];
+
+$endereco_ini = str_replace(" ", "+", $endereco_partida);
+$endereco_fim = str_replace(" ", "+", $endereco_destino);
+
+
+$encontrou = 0;
+if ($usar_maps) {
+    $url = 'https://maps.googleapis.com/maps/api/directions/json?origin=' . $endereco_ini . '&destination=' . $endereco_fim . '&key=' . KEY_GOOGLE_MAPS . '&language=pt-BR&region=BR&mode=driving';
+    $json = file_get_contents($url);
+    $obj = json_decode($json);
+
+    $km = $obj->routes[0]->legs[0]->distance->value;
+    $km = $km / 1000;
+
+    $minutos = $obj->routes[0]->legs[0]->duration->value;
+    $minutos = $minutos / 60;
+    $status = $obj->status;
+    if ($status == "ZERO_RESULTS" || $status == "NOT_FOUND") {
+        $km = 0;
+        $minutos = 0;
+    } else {
+        $encontrou = 1;
+    }
+    //latitude e longitude do inicio
+    $lat_ini = $obj->routes[0]->legs[0]->start_location->lat;
+    $lng_ini = $obj->routes[0]->legs[0]->start_location->lng;
+    //latitude e longitude do fim
+    $lat_fim = $obj->routes[0]->legs[0]->end_location->lat;
+    $lng_fim = $obj->routes[0]->legs[0]->end_location->lng;
+} 
+
+//se categoria for null então encontrou = 0
+if ($dados_categoria == null) {
+    $encontrou = 0;
+}
+
+
+
+$taxa_km = $dados_categoria['tx_km'];
+$taxa_km = str_replace(",", ".", $taxa_km);
+$taxa_minuto = $dados_categoria['tx_minuto'];
+$taxa_minuto = str_replace(",", ".", $taxa_minuto);
+$taxa_base = $dados_categoria['tx_base'];
+$taxa_base = str_replace(",", ".", $taxa_base);
+
+//somando as taxas
+$taxa = ($km * $taxa_km) + ($minutos * $taxa_minuto) + $taxa_base;
+
+//verifica se está dentro do dinamico de horarios
+$taxa_add = 0;
+$taxa_add_horarios = 0;
+$dinamico_horarios = $dados_categoria['dinamico_horarios'];
+foreach ($dinamico_horarios as $horario) {
+    $taxa_h = $dh->verifica_horario($horario);
+    if ($taxa_h) {
+        $taxa_add = str_replace(",", ".", $taxa_h['adicional']);
+        if ($taxa_add > $taxa_add_horarios) {
+            $taxa_add_horarios = $taxa_add;
+            $dados_retorno['dinamico_horarios'] = $taxa_h;
+        }
+    }
+}
+//fim verifica se está dentro do dinamico de horarios
+
+//verifica se está dentro do dinamico de mapa e pega o mais caro
+$taxa_add_mapa_end_ini = 0;
+$taxa_add = 0;
+$dinamico_mapa = $dados_categoria['dinamico_local'];
+foreach ($dinamico_mapa as $din_mapa) {
+    $taxa_m = $dm->verifica_localizacao($cidade_id, $lat_ini, $lng_ini);
+    if ($taxa_m) {
+        $tx_add = str_replace(",", ".", $taxa_m['adicional']);
+        if ($tx_add > $taxa_add_mapa_end_ini) {
+            $taxa_add_mapa_end_ini = $tx_add;
+            $dados_retorno['dinamico_mapa_ini'] = $taxa_m;
+        }
+    }
+}
+//fim verifica se está dentro do dinamico de mapa
+
+$taxa_add = 0;
+$taxa_add_mapa_end_fim = 0;
+$dinamico_mapa = $dados_categoria['dinamico_local'];
+foreach ($dinamico_mapa as $din_mapa) {
+    $taxa_m = $dm->verifica_localizacao($cidade_id, $lat_fim, $lng_fim);
+    if ($taxa_m) {
+        $taxa_add = str_replace(",", ".", $taxa_m['adicional']);
+        if ($taxa_add > $taxa_add_mapa_end_fim) {
+            $taxa_add_mapa_end_fim = $taxa_add;
+            $dados_retorno['dinamico_mapa_fim'] = $taxa_m;
+        }
+    }
+}
+//fim verifica se está dentro do dinamico de mapa
+
+$taxa += $taxa_add_horarios + $taxa_add_mapa_end_ini + $taxa_add_mapa_end_fim;
+
+//verifica taxa minima
+$taxa_minima = $dados_categoria['tx_minima'];
+$taxa_minima = str_replace(",", ".", $taxa_minima);
+if ($taxa < $taxa_minima) {
+    $taxa = $taxa_minima;
+}
+
+$taxa = number_format($taxa, 2, ',', '.');
+$minutos = number_format($minutos, 0, ',', '.');
+$km = number_format($km, 2, '.', '.');
+
+
+$id_corrida = $corridas->insere_corrida(0, 0, $cidade_id, $lat_ini, $lng_ini, $lat_fim, $lng_fim, $km, $minutos, $endereco_partida, $endereco_destino, $taxa, $metodo_pagamento, 0, 0, 0, $categoria_id, $nome_cliente);
+if($id_corrida > 0){
+    $corridas->setUserWhatsapp($id_corrida, $telefone_cliente);
+    $corridas->set_status($id_corrida, 0);
+    $corridas->setimg_user($id_corrida, $img_user);
+    $status_historico->salva_status($id_corrida, "Corrida solicitada", "WhatsApp");
+    echo json_encode(array("id" => $id_corrida, "status" => "ok"));
+}else{
+    echo json_encode(array("id" => 0, "status" => "erro"));
+}
+
+
+?>

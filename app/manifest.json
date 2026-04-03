@@ -1,0 +1,31 @@
+{
+        "name": "Ubezap",
+        "short_name": "Ubezap",
+        "icons": [
+            {
+                "src": "assets/icon-152x152.png",
+                "sizes": "152x152",
+                "type": "image/png"
+            },
+            {
+                "src": "assets/icon-167x167.png",
+                "sizes": "167x167",
+                "type": "image/png"
+            },
+            {
+                "src": "assets/icon-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": "assets/icon-512x512.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+
+        ],
+        "start_url": "index.php",
+        "display": "fullscreen",
+        "background_color": "#ffffff",
+        "theme_color": "#0b0c0c"
+    }

@@ -1,0 +1,8 @@
+.DS_Store
+._*
+error_log
+node_modules/
+.vscode/
+.idea/
+*.log
+.temp_analysis/
