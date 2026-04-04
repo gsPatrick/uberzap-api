@@ -22,8 +22,12 @@ if($cliente){
         $corridas[$key]['date'] = $t ->data_mysql_para_user($corrida['date']) . " às " . $t ->hora_mysql_para_user($corrida['date']);
         $corridas[$key]['motorista'] = $mt ->get_motorista($corrida['motorista_id'])['nome'];
         $corridas[$key]['status'] = $m ->status_string($corrida['status']);
+        $corridas[$key]['endereco_ini'] = $corrida['endereco_ini_txt'];
+        $corridas[$key]['endereco_fim'] = $corrida['endereco_fim_txt'];
+        $corridas[$key]['valor'] = $corrida['taxa'];
+        
         if($a ->get_avaliacao($corrida['id'])['nota']){
-        $corridas[$key]['avaliacao'] = $a ->get_avaliacao($corrida['id'])['nota'];
+            $corridas[$key]['avaliacao'] = $a ->get_avaliacao($corrida['id'])['nota'];
         }else{
             $corridas[$key]['avaliacao'] = 0;
         }
@@ -31,7 +35,7 @@ if($cliente){
     if(count($corridas) > 0){
         echo json_encode($corridas);
     }else{
-        echo "";
+        echo json_encode(array());
     }
 }
 

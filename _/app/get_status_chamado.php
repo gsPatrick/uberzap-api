@@ -52,35 +52,32 @@ if ($cliente) {
         $status_string = $crr->status_string($status);
         if ($status == 1 || $status == 2 || $status == 3 || $status == 4) { 
             $dados_motorista = $m->get_motorista($corrida['motorista_id']);
-            $resposta['motorista'] = $dados_motorista['nome'];
-            $resposta['motorista_id'] = $dados_motorista['id']; 
-            $resposta['motorista_img'] = $dados_motorista['img'];
-            $resposta['latitude'] = $dados_motorista['latitude'];
-            $resposta['longitude'] = $dados_motorista['longitude'];
-            $resposta['placa'] = $dados_motorista['placa'];
-            $resposta['veiculo'] = $dados_motorista['veiculo'];
-            $resposta['motorista_nome'] = $dados_motorista['nome'];
-            $resposta['avaliacao'] = $a->get_media_avaliacoes($dados_motorista['id']);
+            
+            // Calcula o tempo do motorista se status for 1
+            $tempo = 0;
+            if ($status == 1) {
+                $dados_tempo = $mapbox->getDistanciaETempo($dados_motorista['latitude'], $dados_motorista['longitude'], $corrida['lat_ini'], $corrida['lng_ini']);
+                if($dados_tempo){
+                    $tempo = (int) round($dados_tempo['tempo'] / 60);
+                }
+            }
+
+            $resposta['motorista'] = array(
+                'id' => $dados_motorista['id'],
+                'nome' => $dados_motorista['nome'],
+                'foto' => $dados_motorista['img'],
+                'latitude' => $dados_motorista['latitude'],
+                'longitude' => $dados_motorista['longitude'],
+                'placa' => $dados_motorista['placa'],
+                'veiculo' => $dados_motorista['veiculo'],
+                'rating' => $a->get_media_avaliacoes($dados_motorista['id']),
+                'tempo_chegada' => ($status == 1 ? $tempo . " min" : "0 min")
+            );
+
             $resposta['lat_ini'] = $corrida['lat_ini'];
             $resposta['lng_ini'] = $corrida['lng_ini']; 
             $resposta['lat_fim'] = $corrida['lat_fim'];
             $resposta['lng_fim'] = $corrida['lng_fim'];  
-
-            //se status for 1 calcula o tempo entre o motorista e o cliente
-            if ($status == 1) {
-                $maps = new Maps();
-                //$tempo = $maps->calcularTempo($dados_motorista['latitude'], $dados_motorista['longitude'], $corrida['lat_ini'], $corrida['lng_ini']);
-                $dados_tempo = $mapbox->getDistanciaETempo($dados_motorista['latitude'], $dados_motorista['longitude'], $corrida['lat_ini'], $corrida['lng_ini']);
-                if($dados_tempo){
-                    $tempo = (int) round($dados_tempo['tempo'] / 60); //converte para minutos (inteiro, sem casas decimais)
-                } else {
-                    $tempo = 0;
-                }
-                $resposta['tempo_motorista'] = $tempo;
-            } else {
-                $resposta['tempo_motorista'] = 0;
-            }
-
         }
         $resposta['status'] = $status;
         $resposta['status_string'] = $status_string;
