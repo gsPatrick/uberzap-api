@@ -17,6 +17,7 @@ if($cliente){
             "status" => "sucesso",
             "id" => $cliente['id'],
             "nome" => $cliente['nome'],
+            "email" => $cliente['email'],
             "telefone" => $cliente['telefone'],
             "ativo" => $cliente['ativo'],
             "saldo" => $cliente['saldo'],
