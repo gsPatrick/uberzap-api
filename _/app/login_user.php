@@ -19,6 +19,7 @@ if($cliente){
             "nome" => $cliente['nome'],
             "email" => $cliente['email'],
             "telefone" => $cliente['telefone'],
+            "nota" => "4.9",
             "ativo" => $cliente['ativo'],
             "saldo" => $cliente['saldo'],
             "cidade_id" => $cliente['cidade_id']
