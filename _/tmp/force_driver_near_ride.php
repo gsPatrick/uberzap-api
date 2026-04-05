@@ -1,5 +1,5 @@
 <?php
-include("../bd/config.php");
+include_once "../bd/conexao.php";
 include("../classes/motoristas.php");
 
 $m = new Motoristas();
