@@ -19,18 +19,11 @@ if ($s->compare_secret($secret_key)) {
 	$cat = new categorias();
 	$m = new motoristas();
 	$mapbox = new Mapbox(MAPBOX_KEY);
+	$cidade_id = $_POST['cidade_id'];
 	$id_motorista = $_POST['id_motorista'];
 	
-	// Busca corridas disponíveis que NÃO foram rejeitadas por este motorista
-	$sql_disponiveis = "SELECT * FROM corridas 
-                        WHERE cidade_id = :cidade_id 
-                        AND status = '0' 
-                        AND id NOT IN (SELECT id_corrida FROM corridas_rejeitadas WHERE id_motorista = :id_motorista)
-                        ORDER BY date ASC";
-	$stmt_disp = $pdo->prepare($sql_disponiveis);
-	$stmt_disp->execute(['cidade_id' => $cidade_id, 'id_motorista' => $id_motorista]);
-	$corridas = $stmt_disp->fetchAll(PDO::FETCH_ASSOC);
-	
+	// Busca corridas disponíveis (simplificado para destravar simulação)
+	$corridas  = $c->get_corridas_disponiveis($cidade_id);
 	$dados_motorista = $m->get_motorista($id_motorista);
 	
 	// Filtro de tempo: Somente corridas dos últimos 15 minutos
