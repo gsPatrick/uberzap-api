@@ -10,6 +10,10 @@ if($s->compare_secret($secret_key)){
 	$status = $_POST['status'];
 	$latitude = $_POST['latitude'];
 	$longitude = $_POST['longitude'];
+	
+	// Auditoria de GPS
+	error_log("GPS Update - Motorista: $id_motorista | Lat: $latitude | Lng: $longitude | Status: $status");
+
 	$m -> atualiza_coordenadas($id_motorista, $latitude, $longitude);
 	$m -> atualiza_disponibilidade($id_motorista, $status);
 }
