@@ -18,6 +18,10 @@ if($s->compare_secret($secret_key)){
 
     foreach ($corridas as $key => $value) {
         $corridas[$key]['hora'] = $t -> hora_mysql_para_user($value['date']);
+        $corridas[$key]['valor'] = $value['taxa'];
+        $corridas[$key]['endereco_ini'] = $value['endereco_ini_txt'];
+        $corridas[$key]['endereco_fim'] = $value['endereco_fim_txt'];
+        $corridas[$key]['status_label'] = $c -> status_string($value['status']);
     }
     if($corridas){
         echo json_encode($corridas);
