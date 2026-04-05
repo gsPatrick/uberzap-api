@@ -10,6 +10,10 @@ $t = new Taximetro();
 if($s->compare_secret($secret_key)){
 	$cpf = $_POST['cpf'];
 	$senha = $_POST['senha'];
+
+	$salt = "anjdsn5s141d5";
+	$senha = md5($senha.$salt);
+
 	$m = new Motoristas();
 	$login = $m ->login_motorista($cpf, $senha);
 	if($login){
