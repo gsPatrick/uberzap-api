@@ -25,18 +25,17 @@ if ($s->compare_secret($secret_key)) {
 	// Busca corridas disponíveis (simplificado para destravar simulação)
 	$corridas  = $c->get_corridas_disponiveis($cidade_id);
 	$dados_motorista = $m->get_motorista($id_motorista);
+    
+    // Injeção de variáveis faltantes:
+    $ids_categorias = json_decode($dados_motorista['ids_categorias'], true);
+    if (!is_array($ids_categorias)) $ids_categorias = array();
+    
+    $latitude_motorista = $dados_motorista['latitude'];
+    $longitude_motorista = $dados_motorista['longitude'];
 	
-	// Filtro de tempo: Somente corridas dos últimos 15 minutos
-	$agora = time();
-	$limite_tempo = 15 * 60; // 15 minutos em segundos
-
 	if ($corridas) {
 		foreach ($corridas as $key => $value) {
-			$data_corrida = strtotime($value['date']);
-			if (($agora - $data_corrida) > $limite_tempo) {
-				unset($corridas[$key]);
-				continue;
-			}
+            // Filtro de tempo removido para evitar problemas de fuso horário
 			
 			$id_categoria = $value['categoria_id'];
 			if (!in_array($id_categoria, $ids_categorias)) {
