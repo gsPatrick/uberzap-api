@@ -32,6 +32,10 @@ if ($s->compare_secret($secret_key)) {
     
     $latitude_motorista = $dados_motorista['latitude'];
     $longitude_motorista = $dados_motorista['longitude'];
+    
+    // Fallback de GPS: Se as coordenadas estiverem zeradas (0,0), assume Avenida Paulista
+    if (!$latitude_motorista || $latitude_motorista == 0) $latitude_motorista = -23.561706;
+    if (!$longitude_motorista || $longitude_motorista == 0) $longitude_motorista = -46.655981;
 	
 	if ($corridas) {
 		foreach ($corridas as $key => $value) {
