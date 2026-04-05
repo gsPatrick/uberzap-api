@@ -53,23 +53,23 @@ if ($s->compare_secret($secret_key)) {
 			$saldo_cliente = $dados_cliente['saldo'];
 			$saldo_cliente = str_replace(',', '.', $saldo_cliente);
 			$novo_saldo = $saldo_cliente - $valor_corrida;
-			$novo_saldo = number_format($novo_saldo, 2, ',', '');
+			$novo_saldo = number_format($novo_saldo, 2, '.', '');
 			$cl->atualiza_saldo($id_cliente, $novo_saldo);
-			$tc->insereTransacao($id_cliente, 'N/A', $valor_corrida, 'DEBITO CORRIDA', 'CONCLUIDO');
+			$tc->insereTransacao($id_cliente, 'N/A', number_format($valor_corrida, 2, '.', ''), 'DEBITO CORRIDA', 'CONCLUIDO');
 			//passa o valor da corrida para o motorista - a taxa
 			$novo_saldo = $saldo_motorista + ($valor_corrida - $taxa_motorista);
-			$novo_saldo = number_format($novo_saldo, 2, ',', '');
+			$novo_saldo = number_format($novo_saldo, 2, '.', '');
 			$m->atualiza_saldo($id_motorista, $novo_saldo);
-			$valor_corrida = number_format($valor_corrida, 2, ',', '');
-			$tm->insereTransacao($id_motorista, 'N/A', $valor_corrida, 'CREDITO CORRIDA', 'CONCLUIDO');
-			$taxa_motorista = number_format($taxa_motorista, 2, ',', '');
-			$tm->insereTransacao($id_motorista, 'N/A', $taxa_motorista, 'DEBITO CORRIDA', 'CONCLUIDO');
+			$v_corrida_fmt = number_format($valor_corrida, 2, '.', '');
+			$tm->insereTransacao($id_motorista, 'N/A', $v_corrida_fmt, 'CREDITO CORRIDA', 'CONCLUIDO');
+			$taxa_motorista_fmt = number_format($taxa_motorista, 2, '.', '');
+			$tm->insereTransacao($id_motorista, 'N/A', $taxa_motorista_fmt, 'DEBITO CORRIDA', 'CONCLUIDO');
 		} else { //caso não seja carteira crédito, desconta a taxa do motorista
 			$novo_saldo = $saldo_motorista - $taxa_motorista;
-			$novo_saldo = number_format($novo_saldo, 2, ',', '');
+			$novo_saldo = number_format($novo_saldo, 2, '.', '');
 			$m->atualiza_saldo($id_motorista, $novo_saldo);
-			$taxa_motorista = number_format($taxa_motorista, 2, ',', '');
-			$tm->insereTransacao($id_motorista, 'N/A', $taxa_motorista, 'DEBITO CORRIDA', 'CONCLUIDO');
+			$taxa_motorista_fmt = number_format($taxa_motorista, 2, '.', '');
+			$tm->insereTransacao($id_motorista, 'N/A', $taxa_motorista_fmt, 'DEBITO CORRIDA', 'CONCLUIDO');
 		}
 	}
 	$user_whatsapp = $dados_corrida['user_whatsapp'];

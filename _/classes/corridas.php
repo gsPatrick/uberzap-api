@@ -192,6 +192,15 @@ class corridas
         }
     }
 
+    public function aceitar($motorista_id, $id_corrida)
+    {
+        $query = "UPDATE corridas SET motorista_id = :motorista_id, status = '1' WHERE id = :id";
+        $stmt = $this->conexao->prepare($query);
+        $stmt->bindParam(':motorista_id', $motorista_id);
+        $stmt->bindParam(':id', $id_corrida);
+        return $stmt->execute();
+    }
+
     public function get_corridas_disponiveis($cidade_id)
     {
         $cmd = "SELECT * FROM corridas WHERE cidade_id = :cidade_id AND status = '0' ORDER BY date ASC";

@@ -31,7 +31,7 @@ if ($s->compare_secret($secret_key)) {
     $saldo_motorista = $dados_motorista['saldo'];
     $taxa_motorista = $taxa_porcentagem * $taxa / 100;
     $novo_saldo = $saldo_motorista - $taxa_motorista;
-    $novo_saldo = number_format($novo_saldo, 2, ',', '');
+    $novo_saldo = number_format($novo_saldo, 2, '.', '');
     $m -> atualiza_saldo($id_motorista, $novo_saldo);
 
     $taxa_motorista = number_format($taxa_motorista, 2, ',', '');

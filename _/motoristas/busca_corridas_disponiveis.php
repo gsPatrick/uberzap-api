@@ -7,6 +7,7 @@ include("../classes/clientes.php");
 include("../classes/tempo.php");
 include("../classes/categorias.php");
 include("../classes/mapbox.php");
+include("../bd/conexao.php"); // Adicionado para suportar a nova query de recusas
 
 $secret_key = $_POST['secret'];
 
@@ -18,21 +19,32 @@ if ($s->compare_secret($secret_key)) {
 	$cat = new categorias();
 	$m = new motoristas();
 	$mapbox = new Mapbox(MAPBOX_KEY);
-	$cidade_id = $_POST['cidade_id'];
 	$id_motorista = $_POST['id_motorista'];
-	$corridas  = $c->get_corridas_disponiveis($cidade_id);
+	
+	// Busca corridas disponíveis que NÃO foram rejeitadas por este motorista
+	$sql_disponiveis = "SELECT * FROM corridas 
+                        WHERE cidade_id = :cidade_id 
+                        AND status = '0' 
+                        AND id NOT IN (SELECT id_corrida FROM corridas_rejeitadas WHERE id_motorista = :id_motorista)
+                        ORDER BY date ASC";
+	$stmt_disp = $pdo->prepare($sql_disponiveis);
+	$stmt_disp->execute(['cidade_id' => $cidade_id, 'id_motorista' => $id_motorista]);
+	$corridas = $stmt_disp->fetchAll(PDO::FETCH_ASSOC);
+	
 	$dados_motorista = $m->get_motorista($id_motorista);
-	$latitude_motorista = $dados_motorista['latitude'];
-	$longitude_motorista = $dados_motorista['longitude'];
-	//se motorista online = 2 retorna no
-	if ($dados_motorista['online'] == 2) {
-		echo "no";
-		exit;
-	} 
-	$ids_categorias = $dados_motorista['ids_categorias'];
-	$ids_categorias = json_decode($ids_categorias);
+	
+	// Filtro de tempo: Somente corridas dos últimos 15 minutos
+	$agora = time();
+	$limite_tempo = 15 * 60; // 15 minutos em segundos
+
 	if ($corridas) {
 		foreach ($corridas as $key => $value) {
+			$data_corrida = strtotime($value['date']);
+			if (($agora - $data_corrida) > $limite_tempo) {
+				unset($corridas[$key]);
+				continue;
+			}
+			
 			$id_categoria = $value['categoria_id'];
 			if (!in_array($id_categoria, $ids_categorias)) {
 				unset($corridas[$key]);
