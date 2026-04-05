@@ -118,7 +118,8 @@ if ($secret == $secret_key) { // verifica se a chave enviada pelo app é igual a
         "lucro_mes" => number_format($lucro_mes, 2, ',', '.'),
         "qnt_fim" => $total_fim,
         "valor_fim" => number_format($lucro_total, 2, ',', '.'),
-        "saldo_plataforma" => $saldo
+        "saldo_plataforma" => $saldo,
+        "grafico" => [30, 45, 20, 60, 40, 55, 75] // Mock dinâmico simulado por enquanto para o gráfico
     );
 
     echo json_encode($dados);

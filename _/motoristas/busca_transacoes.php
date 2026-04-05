@@ -8,11 +8,8 @@ $m = new Motoristas();
 $tmp = new tempo();
 
 $motorista_id = $_POST['motorista_id'];
-$cidade_id = $cliente['cidade_id'];
-
-$t = new transacoes_motoristas($cidade_id);
-
 $dados_motorista = $m->get_motorista($motorista_id);
+$cidade_id = $dados_motorista['cidade_id'];
 $saldo = $dados_motorista['saldo'];
 
 $transacoes = $t->getByUserId($motorista_id);
