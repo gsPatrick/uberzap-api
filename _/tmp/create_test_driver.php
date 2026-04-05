@@ -4,21 +4,24 @@ include_once "../bd/conexao.php";
 $passenger_phone = "71982862912";
 $new_driver_phone = "11988887777"; // Número aleatório para o motorista
 $new_driver_cpf = "999.888.777-00";
+$raw_password = "patrickteste";
+$salt = "anjdsn5s141d5";
+$senha_hash = md5($raw_password . $salt);
 
 echo "--- Criando Motorista de Teste ---\n";
 
-// 1. Buscar senha do passageiro
-$sql = "SELECT senha, cidade_id FROM clientes WHERE telefone = :phone";
+// 1. Buscar dados da cidade do passageiro
+$sql = "SELECT cidade_id FROM clientes WHERE telefone = :phone";
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':phone' => $passenger_phone]);
 $passenger = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$passenger) {
-    die("❌ Passageiro $passenger_phone não encontrado no banco.\n");
+    echo "⚠️ Passageiro $passenger_phone não encontrado. Usando Cidade ID 1.\n";
+    $cidade_id = 1;
+} else {
+    $cidade_id = $passenger['cidade_id'];
 }
-
-$senha_hash = $passenger['senha'];
-$cidade_id = $passenger['cidade_id'];
 
 // 2. Inserir novo motorista
 try {
