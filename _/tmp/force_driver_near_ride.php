@@ -14,9 +14,9 @@ $driver = $stmt->fetch();
 if ($driver) {
     $id = $driver['id'];
     
-    // 2. Forçar coordenadas (perto do ponto de teste) e status Online
-    $lat = -23.5617;
-    $lng = -46.6623;
+    // 2. Forçar coordenadas (perto do ponto de teste: Av. Paulista)
+    $lat = -23.561706;
+    $lng = -46.655981;
     
     $sql_update = "UPDATE motoristas SET 
         latitude = :lat, 
