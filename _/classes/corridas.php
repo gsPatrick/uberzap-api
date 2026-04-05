@@ -157,10 +157,10 @@ class corridas
     public function get_corridas_motorista_datas($motorista_id, $date_from, $date_to, $completas = false)
     {
         if ($completas) {
-            $cmd = "SELECT * FROM corridas WHERE motorista_id = :motorista_id AND date BETWEEN :date_from AND :date_to AND status = '4' ORDER BY date ASC";
+            $cmd = "SELECT * FROM corridas WHERE motorista_id = :motorista_id AND date BETWEEN :date_from AND :date_to AND status = '4' ORDER BY date DESC";
         }
         else {
-            $cmd = "SELECT * FROM corridas WHERE motorista_id = :motorista_id AND date BETWEEN :date_from AND :date_to ORDER BY date ASC";
+            $cmd = "SELECT * FROM corridas WHERE motorista_id = :motorista_id AND date BETWEEN :date_from AND :date_to ORDER BY date DESC";
         }
         $sql = $this->conexao->prepare($cmd);
         $sql->bindValue(":motorista_id", $motorista_id);

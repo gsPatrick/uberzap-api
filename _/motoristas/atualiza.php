@@ -24,7 +24,12 @@ if ($s->compare_secret($secret_key)) {
 	$ubw = new usuarios_bot_whats();
 	$id_corrida = $_POST['id_corrida'];
 	$status = $_POST['status'];
+	$taxa = isset($_POST['taxa']) ? $_POST['taxa'] : null;
+
 	$c->set_status($id_corrida, $status);
+	if ($taxa) {
+		$c->atualiza_taxa($id_corrida, $taxa);
+	}
 	$status_string = $c->status_string($status);
 	$sh->salva_status($id_corrida, $status_string, "App Motorista");
 	//busca dados da corrida wa

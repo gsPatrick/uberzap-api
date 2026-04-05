@@ -154,6 +154,20 @@ Class clientes {
         }
     }
 
+    public function deduz_saldo($id, $valor_deduzir) {
+        $cliente = $this->get_cliente_id($id);
+        if($cliente) {
+            // Converte saldo string (0,00) para float
+            $saldo_atual = (float) str_replace(',', '.', $cliente['saldo']);
+            $novo_saldo = $saldo_atual - (float) $valor_deduzir;
+            
+            // Formata de volta para o padrão do banco (0,00)
+            $saldo_formatado = number_format($novo_saldo, 2, ',', '');
+            return $this->atualiza_saldo($id, $saldo_formatado);
+        }
+        return false;
+    }
+
     public function get_cliente_telefone($telefone){
         $query = "SELECT * FROM clientes WHERE telefone = :telefone";
         $stmt = $this->conexao->prepare($query);
