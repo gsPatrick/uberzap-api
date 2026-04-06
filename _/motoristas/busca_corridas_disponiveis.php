@@ -22,9 +22,17 @@ if ($s->compare_secret($secret_key)) {
 	$cidade_id = $_POST['cidade_id'];
 	$id_motorista = $_POST['id_motorista'];
 	
-	// Busca corridas disponíveis (simplificado para destravar simulação)
-	$corridas  = $c->get_corridas_disponiveis($cidade_id);
-	$dados_motorista = $m->get_motorista($id_motorista);
+	// Busca corridas disponíveis EXCLUINDO as que o motorista já recusou pessoalmente
+    // id_motorista e cidade_id são recebidos via POST
+    $sql_dispo = "SELECT c.* FROM corridas c 
+                  LEFT JOIN corridas_rejeitadas cr ON (c.id = cr.id_corrida AND cr.id_motorista = :id_moto)
+                  WHERE c.cidade_id = :cid AND c.status = '0' AND cr.id_corrida IS NULL 
+                  ORDER BY c.date ASC";
+    $stmt_dispo = $pdo->prepare($sql_dispo);
+    $stmt_dispo->execute(['id_moto' => $id_motorista, 'cid' => $cidade_id]);
+    $corridas = $stmt_dispo->fetchAll(PDO::FETCH_ASSOC);
+
+    $dados_motorista = $m->get_motorista($id_motorista);
     
     // Injeção de variáveis faltantes:
     $ids_categorias = json_decode($dados_motorista['ids_categorias'], true);
