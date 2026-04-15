@@ -21,10 +21,20 @@ if ($s->compare_secret($secret_key)) {
 	$mapbox = new Mapbox(MAPBOX_KEY);
 	$cidade_id = $_POST['cidade_id'];
 	$id_motorista = $_POST['id_motorista'];
+
+    // Garante existência da tabela de recusas para não quebrar em bases antigas.
+    $sql_schema = "CREATE TABLE IF NOT EXISTS corridas_rejeitadas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        id_motorista INT NOT NULL,
+        id_corrida INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_motorista_corrida (id_motorista, id_corrida),
+        INDEX idx_motorista (id_motorista),
+        INDEX idx_corrida (id_corrida)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $pdo->exec($sql_schema);
 	
-	// Busca corridas disponíveis EXCLUINDO as que o motorista já recusou pessoalmente.
-    // Em bases antigas, a tabela corridas_rejeitadas pode ainda não existir.
-    // Nesse caso, faz fallback para a query clássica sem recusa individual.
+    // Busca corridas disponíveis EXCLUINDO as que o motorista já recusou pessoalmente.
     try {
         $sql_dispo = "SELECT c.* FROM corridas c 
                       LEFT JOIN corridas_rejeitadas cr ON (c.id = cr.id_corrida AND cr.id_motorista = :id_moto)
@@ -34,7 +44,7 @@ if ($s->compare_secret($secret_key)) {
         $stmt_dispo->execute(['id_moto' => $id_motorista, 'cid' => $cidade_id]);
         $corridas = $stmt_dispo->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        // 42S02 = tabela/visão inexistente.
+        // 42S02 = tabela/visão inexistente (fallback defensivo).
         if ($e->getCode() === '42S02') {
             $sql_dispo = "SELECT * FROM corridas WHERE cidade_id = :cid AND status = '0' ORDER BY date ASC";
             $stmt_dispo = $pdo->prepare($sql_dispo);
