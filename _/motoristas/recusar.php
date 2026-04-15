@@ -32,8 +32,14 @@ if ($s->compare_secret($secret_key)) {
         $stmt->execute(['id_motorista' => $id_motorista, 'id_corrida' => $id_corrida]);
         echo "ok";
     } catch (Exception $e) {
-        // Se já existir (duplicado), apenas ignora e retorna ok
-        echo "ok";
+        // Se já existir (duplicado), ignora e retorna ok.
+        // Outros erros devem ser informados para não mascarar falhas de recusa.
+        $msg = $e->getMessage();
+        if (strpos($msg, '1062') !== false || strpos(strtolower($msg), 'duplicate') !== false) {
+            echo "ok";
+        } else {
+            echo "error_db";
+        }
     }
 } else {
     echo "no_auth";

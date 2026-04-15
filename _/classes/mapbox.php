@@ -6,7 +6,27 @@ Class Mapbox {
         $this->mapbox_access_token = $mapbox_access_token;
     }
 
+    private function haversineKm($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
     public function getDistanciaETempo($origem_lat, $origem_lng, $destino_lat, $destino_lng) {
+        $distanciaReta = $this->haversineKm($origem_lat, $origem_lng, $destino_lat, $destino_lng);
+        // Evita chamadas inválidas/ruidosas na Mapbox para distâncias absurdas (ex.: GPS fora da cidade).
+        if ($distanciaReta > 300) {
+            return [
+                'distancia' => round($distanciaReta, 1),
+                'tempo' => round(($distanciaReta / 45) * 3600) // estimativa simples a 45km/h
+            ];
+        }
+
         // Ajustando o formato correto: longitude,latitude
         $origem = "$origem_lng,$origem_lat";
         $destino = "$destino_lng,$destino_lat";
