@@ -15,15 +15,14 @@ if($s->compare_secret($secret_key)){
     $date_from = date("Y-m-d 00:00:00", strtotime($data));
     $date_to = date("Y-m-d 23:59:59", strtotime($data));
     $corridas = $c->get_corridas_motorista_datas($id_motorista, $date_from, $date_to);
-
-    foreach ($corridas as $key => $value) {
-        $corridas[$key]['hora'] = $t -> hora_mysql_para_user($value['date']);
-        $corridas[$key]['valor'] = $value['taxa'];
-        $corridas[$key]['endereco_ini'] = $value['endereco_ini_txt'];
-        $corridas[$key]['endereco_fim'] = $value['endereco_fim_txt'];
-        $corridas[$key]['status_label'] = $c -> status_string($value['status']);
-    }
     if($corridas){
+        foreach ($corridas as $key => $value) {
+            $corridas[$key]['hora'] = $t -> hora_mysql_para_user($value['date']);
+            $corridas[$key]['valor'] = $value['taxa'];
+            $corridas[$key]['endereco_ini'] = $value['endereco_ini_txt'];
+            $corridas[$key]['endereco_fim'] = $value['endereco_fim_txt'];
+            $corridas[$key]['status_label'] = $c -> status_string($value['status']);
+        }
         echo json_encode($corridas);
     } else{
         echo "no";

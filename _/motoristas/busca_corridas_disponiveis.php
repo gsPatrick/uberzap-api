@@ -22,6 +22,13 @@ if ($s->compare_secret($secret_key)) {
 	$cidade_id = $_POST['cidade_id'];
 	$id_motorista = $_POST['id_motorista'];
 
+    // Nunca envia novas corridas para quem já está em corrida/em atendimento.
+    $corridas_abertas = $c->get_corridas_abertas($id_motorista);
+    if ($corridas_abertas) {
+        echo "no";
+        exit;
+    }
+
     // Garante existência da tabela de recusas para não quebrar em bases antigas.
     $sql_schema = "CREATE TABLE IF NOT EXISTS corridas_rejeitadas (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -38,7 +45,10 @@ if ($s->compare_secret($secret_key)) {
     try {
         $sql_dispo = "SELECT c.* FROM corridas c 
                       LEFT JOIN corridas_rejeitadas cr ON (c.id = cr.id_corrida AND cr.id_motorista = :id_moto)
-                      WHERE c.cidade_id = :cid AND c.status = '0' AND cr.id_corrida IS NULL 
+                      WHERE c.cidade_id = :cid 
+                        AND c.status = '0' 
+                        AND c.date >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                        AND cr.id_corrida IS NULL 
                       ORDER BY c.date ASC";
         $stmt_dispo = $pdo->prepare($sql_dispo);
         $stmt_dispo->execute(['id_moto' => $id_motorista, 'cid' => $cidade_id]);
@@ -46,7 +56,11 @@ if ($s->compare_secret($secret_key)) {
     } catch (PDOException $e) {
         // 42S02 = tabela/visão inexistente (fallback defensivo).
         if ($e->getCode() === '42S02') {
-            $sql_dispo = "SELECT * FROM corridas WHERE cidade_id = :cid AND status = '0' ORDER BY date ASC";
+            $sql_dispo = "SELECT * FROM corridas 
+                          WHERE cidade_id = :cid 
+                            AND status = '0'
+                            AND date >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                          ORDER BY date ASC";
             $stmt_dispo = $pdo->prepare($sql_dispo);
             $stmt_dispo->execute(['cid' => $cidade_id]);
             $corridas = $stmt_dispo->fetchAll(PDO::FETCH_ASSOC);
