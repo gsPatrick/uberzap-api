@@ -1,4 +1,6 @@
 <?php
+// CORS - Libera para todas as origens
+include_once __DIR__ . '/cors.php';
 // Desativa exibição de erros em produção (opcional)
 // error_reporting(0);
 // ini_set("display_errors", 0);

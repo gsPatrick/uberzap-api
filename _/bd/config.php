@@ -1,4 +1,6 @@
 <?php 
+// CORS - Libera para todas as origens (deve ser o primeiro include)
+include_once __DIR__ . '/cors.php';
 header('Content-Type: text/html; charset=utf-8');
 date_default_timezone_set('America/cuiaba'); //mude para o da sua regiao
 define ('DOMINIO','https://top.uberzap.app.br'); //mude para o seu dominio
