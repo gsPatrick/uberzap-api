@@ -5,7 +5,7 @@ header('Content-Type: text/html; charset=utf-8');
 date_default_timezone_set('America/cuiaba'); //mude para o da sua regiao
 define ('DOMINIO','https://top.uberzap.app.br'); //mude para o seu dominio
 define ('APP_NAME','Uberzap'); //mude para o nome do seu app
-define ('KEY_GOOGLE_MAPS', 'AIzaSyDCtw43VZ9-WGxJKapD8B-Asq4h-iXJeD0'); //mudar para chave de api da sua conta
+define ('KEY_GOOGLE_MAPS', 'AIzaSyALug8RJH4w49LYiJWzQ3Y7iOBf1k5VbWY'); //mudar para chave de api da sua conta
 define ('MAPBOX_KEY', 'pk.eyJ1IjoidWJlemFwLW1vYmlsaWRhZGUtdXJiYW5hIiwiYSI6ImNtaGYxM3d3NDAwZ2gycnNjeG9qczU4bmoifQ.2VcBJf-QkhB2Ky9Sm8_B7w'); 
 //mudar para chave de api do cliente
 
