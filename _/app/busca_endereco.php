@@ -47,6 +47,14 @@ $url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' . $encoded . '.json'
 if ($lat != 0.0 || $lng != 0.0) {
     if (is_finite($lat) && is_finite($lng)) {
         $url .= '&proximity=' . rawurlencode($lng . ',' . $lat);
+        // Cria um bounding box (caixa delimitadora) de aprox. 50km de raio
+        // 1 grau de latitude é aprox 111km. 0.45 = ~50km.
+        $delta = 0.45; 
+        $minLon = $lng - $delta;
+        $minLat = $lat - $delta;
+        $maxLon = $lng + $delta;
+        $maxLat = $lat + $delta;
+        $url .= '&bbox=' . rawurlencode("$minLon,$minLat,$maxLon,$maxLat");
     }
 }
 

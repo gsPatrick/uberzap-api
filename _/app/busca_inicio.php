@@ -16,7 +16,7 @@ $cliente = $c->login($telefone, $senha);
 if ($cliente) {
     $cliente_id = $cliente['id'];
     $resposta = array();
-    $corridas = $crr->get_all_corridas_cliente($cliente_id);
+    $corridas = $crr->get_all_corridas_cliente($cliente_id, $telefone);
     if ($corridas) {
         $aberta = false;
         foreach($corridas as $corrida){

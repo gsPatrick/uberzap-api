@@ -47,21 +47,35 @@ class corridas
         return $stmt->fetch();
     }
 
-    public function get_all_corridas_cliente($cliente_id)
+    public function get_all_corridas_cliente($cliente_id, $telefone = "")
     {
-        $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id ORDER BY id DESC";
-        $stmt = $this->conexao->prepare($query);
-        $stmt->bindParam(':cliente_id', $cliente_id);
+        if (!empty($telefone)) {
+            $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id OR user_whatsapp = :telefone ORDER BY id DESC";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+            $stmt->bindParam(':telefone', $telefone);
+        } else {
+            $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id ORDER BY id DESC";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+        }
         $stmt->execute();
         $stmt->setFetchMode(PDO::FETCH_ASSOC);
         return $stmt->fetchAll();
     }
 
-    public function getAllCorridasAbertasCliente($cliente_id)
+    public function getAllCorridasAbertasCliente($cliente_id, $telefone = "")
     {
-        $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id AND (status = 0 OR status = 1 OR status = 2 OR status = 3)";
-        $stmt = $this->conexao->prepare($query);
-        $stmt->bindParam(':cliente_id', $cliente_id);
+        if (!empty($telefone)) {
+            $query = "SELECT * FROM corridas WHERE (cliente_id = :cliente_id OR user_whatsapp = :telefone) AND (status = 0 OR status = 1 OR status = 2 OR status = 3)";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+            $stmt->bindParam(':telefone', $telefone);
+        } else {
+            $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id AND (status = 0 OR status = 1 OR status = 2 OR status = 3)";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+        }
         $stmt->execute();
         $stmt->setFetchMode(PDO::FETCH_ASSOC);
         return $stmt->fetchAll();

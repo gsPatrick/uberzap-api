@@ -31,15 +31,25 @@ $mapbox = new Mapbox(MAPBOX_KEY);
 
 $categorias = $c->get_categorias($cidade_id);
 
-$url = 'https://maps.googleapis.com/maps/api/directions/json?origin=' . $lat_ini . ',' . $lng_ini . '&destination=' . $lat_fim . ',' . $lng_fim . '&key=' . KEY_GOOGLE_MAPS . '&language=pt-BR&region=BR&mode=driving';
+$waypoints = "";
+if(isset($_POST['parada_lat']) && isset($_POST['parada_lng']) && $_POST['parada_lat'] != "" && $_POST['parada_lng'] != ""){
+    $waypoints = "&waypoints=" . $_POST['parada_lat'] . "," . $_POST['parada_lng'];
+}
+
+$url = 'https://maps.googleapis.com/maps/api/directions/json?origin=' . $lat_ini . ',' . $lng_ini . '&destination=' . $lat_fim . ',' . $lng_fim . $waypoints . '&key=' . KEY_GOOGLE_MAPS . '&language=pt-BR&region=BR&mode=driving';
 $json = file_get_contents($url);
 $obj = json_decode($json);
 
-$km = $obj->routes[0]->legs[0]->distance->value;
-$km = $km / 1000;
-
-$minutos = $obj->routes[0]->legs[0]->duration->value;
-$minutos = $minutos / 60;
+$total_distance = 0;
+$total_duration = 0;
+if (isset($obj->routes[0]->legs) && is_array($obj->routes[0]->legs)) {
+    foreach ($obj->routes[0]->legs as $leg) {
+        if (isset($leg->distance->value)) $total_distance += $leg->distance->value;
+        if (isset($leg->duration->value)) $total_duration += $leg->duration->value;
+    }
+}
+$km = $total_distance / 1000;
+$minutos = $total_duration / 60;
 $retorno_fim = array();
 
 $motoristas_disponiveis = $mot->get_motoristas($cidade_id, true);

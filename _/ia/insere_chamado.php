@@ -7,6 +7,7 @@ include("../classes/dinamico_mapa.php");
 include("../classes/categorias_horarios.php");
 include("../classes/corridas.php");
 include("../classes/cidades.php");
+include_once("../classes/clientes.php");
 
 $ct = new cidades();
 $cidade_index = $_POST['cidade_index'];
@@ -159,7 +160,11 @@ $minutos = number_format($minutos, 0, ',', '.');
 $km = number_format($km, 2, '.', '.');
 
 
-$id_corrida = $corridas->insere_corrida(0, 0, $cidade_id, $lat_ini, $lng_ini, $lat_fim, $lng_fim, $km, $minutos, $endereco_partida, $endereco_destino, $taxa, $metodo_pagamento, 0, 0, 0, $categoria_id, $nome_cliente);
+$cl_obj = new clientes();
+$cliente_existente = $cl_obj->verifica_se_existe($telefone_cliente);
+$cli_id = ($cliente_existente && isset($cliente_existente['id'])) ? $cliente_existente['id'] : 0;
+
+$id_corrida = $corridas->insere_corrida(0, $cli_id, $cidade_id, $lat_ini, $lng_ini, $lat_fim, $lng_fim, $km, $minutos, $endereco_partida, $endereco_destino, $taxa, $metodo_pagamento, 0, 0, 0, $categoria_id, $nome_cliente);
 if($id_corrida > 0){
     $corridas->setUserWhatsapp($id_corrida, $telefone_cliente);
     $corridas->set_status($id_corrida, 0);

@@ -39,7 +39,11 @@ if ($s->compare_secret($secret_key)) {
         INDEX idx_motorista (id_motorista),
         INDEX idx_corrida (id_corrida)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-    $pdo->exec($sql_schema);
+    try {
+        $pdo->exec($sql_schema);
+    } catch (PDOException $e) {
+        error_log("busca_corridas: Falha ao criar tabela corridas_rejeitadas: " . $e->getMessage());
+    }
 	
     // Busca corridas disponíveis EXCLUINDO as que o motorista já recusou pessoalmente.
     try {
@@ -112,13 +116,16 @@ if ($s->compare_secret($secret_key)) {
 		//reorganiza indices
 		$corridas = array_values($corridas);
 		if (count($corridas) == 0) {
+            error_log("busca_corridas_disponiveis: Nenhuma corrida passou nos filtros (categorias incompatíveis). Motorista ID: $id_motorista, Categorias: " . json_encode($ids_categorias));
 			echo "no";
 			exit;
 		}
+        error_log("busca_corridas_disponiveis: Retornando " . count($corridas) . " corridas para motorista $id_motorista");
 		echo json_encode($corridas);
 
 		//var_dump($ids_categorias);
 	} else {
+        error_log("busca_corridas_disponiveis: Zero corridas abertas na cidade $cidade_id (SQL não retornou nada). Motorista: $id_motorista");
 		echo "no";
 	}
 }
