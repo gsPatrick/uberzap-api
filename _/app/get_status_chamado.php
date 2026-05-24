@@ -80,14 +80,15 @@ if (in_array($status, [1, 2, 3, 4], true) && !empty($corrida['motorista_id'])) {
 
     $tempo = 0;
     if ($status === 1 && $dados_motorista) {
-        $dados_tempo = $mapbox->getDistanciaETempo(
-            $dados_motorista['latitude'],
-            $dados_motorista['longitude'],
-            $corrida['lat_ini'],
-            $corrida['lng_ini']
-        );
-        if ($dados_tempo) {
-            $tempo = (int) round($dados_tempo['tempo'] / 60);
+        $latMot = $dados_motorista['latitude'] ?? null;
+        $lngMot = $dados_motorista['longitude'] ?? null;
+        $latIni = $corrida['lat_ini'] ?? null;
+        $lngIni = $corrida['lng_ini'] ?? null;
+        if ($latMot && $lngMot && $latIni && $lngIni) {
+            $dados_tempo = $mapbox->getDistanciaETempo($latMot, $lngMot, $latIni, $lngIni);
+            if ($dados_tempo) {
+                $tempo = (int) round($dados_tempo['tempo'] / 60);
+            }
         }
     }
 

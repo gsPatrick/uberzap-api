@@ -48,10 +48,9 @@ if ($cliente) {
                 $segundos_passados = time() - strtotime($hora_aceite);
                 
                 if($segundos_passados > $tempo_tolerancia) {
-                    // Aplica multa no banco de dados da corrida
-                    $crr->aplicaTaxaCancelamento($id_corrida, $valor_multa);
-                    // Deduz do saldo do cliente
+                    // Deduz do saldo do cliente; taxa fica em cancelar_corrida (status 5)
                     $c->deduz_saldo($cliente_id, $valor_multa);
+                    $crr->atualiza_taxa($id_corrida, $valor_multa);
                 }
             }
         }
