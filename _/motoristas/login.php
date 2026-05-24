@@ -2,12 +2,13 @@
 header('Content-Type: application/json; charset=utf-8');
 header('access-control-allow-origin: *');
 
+require_once __DIR__ . '/../bd/conexao.php';
 require_once __DIR__ . '/../bd/normalize.php';
 
-include('../classes/motoristas.php');
-include('../classes/seguranca.php');
-include('../classes/cidades.php');
-include('../classes/taximetro.php');
+require_once __DIR__ . '/../classes/motoristas.php';
+require_once __DIR__ . '/../classes/seguranca.php';
+require_once __DIR__ . '/../classes/cidades.php';
+require_once __DIR__ . '/../classes/taximetro.php';
 
 try {
     $secret_key = $_POST['secret'] ?? '';

@@ -5,7 +5,8 @@ class banners
     private $conexao;
     public function __construct()
     {
-        include '../bd/conexao.php';
+        require_once __DIR__ . '/../bd/conexao.php';
+        global $pdo;
         $this->conexao = $pdo;
     }
 

@@ -3,7 +3,8 @@ Class clientes {
     private $pdo; 
     private $conexao;
     public function __construct() {
-        include '../bd/conexao.php';
+        require_once __DIR__ . '/../bd/conexao.php';
+        global $pdo;
         $this->conexao = $pdo;
     }
     public function cadastra($cidade_id, $nome, $email, $telefone, $senha, $latitude = "0", $longitude = "0", $id_signal = "", $ativo = 1, $saldo = "0,00") {

@@ -2,7 +2,8 @@
 Class admin {
     private $pdo;
     public function __construct() {
-        include '../bd/conexao.php';
+        require_once __DIR__ . '/../bd/conexao.php';
+        global $pdo;
         $this->pdo = $pdo;
     }
 

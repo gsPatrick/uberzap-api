@@ -2,10 +2,11 @@
 header('Content-Type: application/json; charset=utf-8');
 header('access-control-allow-origin: *');
 
+require_once __DIR__ . '/../bd/conexao.php';
 require_once __DIR__ . '/../bd/normalize.php';
 
 try {
-    include_once '../classes/clientes.php';
+    require_once __DIR__ . '/../classes/clientes.php';
     $clientes = new Clientes();
 
     $telefone = ubezap_post_digits(['telefone', 'cpf', 'login', 'usuario', 'celular']);

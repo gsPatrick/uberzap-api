@@ -5,7 +5,8 @@ class transacoes_motoristas
     private $conexao;
     public function __construct($cidade_id)
     {
-        include '../bd/conexao.php';
+        require_once __DIR__ . '/../bd/conexao.php';
+        global $pdo;
         $this->conexao = $pdo;
         $this->cidade_id = $cidade_id;
     }

@@ -2,7 +2,8 @@
 Class seguranca {
     private $secret;
     public function __construct() {
-        include '../bd/conexao.php';
+        require_once __DIR__ . '/../bd/conexao.php';
+        global $secret;
         $this->secret = $secret;
     }
 
