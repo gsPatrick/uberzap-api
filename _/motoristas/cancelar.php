@@ -56,4 +56,6 @@ if ($dados_cliente) {
     ExpoPush::notifyPassengerTripStatus($dados_cliente, 5, $nome_motorista, $id_corrida);
 }
 
+$m->atualiza_disponibilidade($corrida['motorista_id'], 1);
+
 echo 'ok';
