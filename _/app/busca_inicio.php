@@ -1,8 +1,9 @@
 <?php
 header("access-control-allow-origin: *");
-include("../bd/config.php");
-include("../classes/corridas.php");
-include_once "../classes/clientes.php";
+require_once __DIR__ . '/../bd/conexao.php';
+include(__DIR__ . '/../bd/config.php');
+require_once __DIR__ . '/../classes/corridas.php';
+require_once __DIR__ . '/../classes/clientes.php';
 
 $crr = new corridas();
 $c = new Clientes();

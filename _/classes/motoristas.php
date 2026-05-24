@@ -125,12 +125,13 @@ Class motoristas {
              WHERE senha = :senha
                AND ativo = '1'
                AND (
-                    $cpfExpr = :digits
-                    OR $telExpr = :digits
+                    $cpfExpr = :digits_cpf
+                    OR $telExpr = :digits_tel
                )
              LIMIT 1"
         );
-        $sql->bindValue(':digits', $digits);
+        $sql->bindValue(':digits_cpf', $digits);
+        $sql->bindValue(':digits_tel', $digits);
         $sql->bindValue(':senha', $senha);
         $sql->execute();
         $dados = $sql->fetch();

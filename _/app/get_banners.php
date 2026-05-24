@@ -1,6 +1,7 @@
 <?php 
 header('access-control-allow-origin: *');
-include_once "../classes/banners.php";
+require_once __DIR__ . '/../bd/conexao.php';
+include_once __DIR__ . '/../classes/banners.php';
 
 
 $b = new Banners();

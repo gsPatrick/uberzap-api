@@ -6,16 +6,58 @@ include_once __DIR__ . '/cors.php';
 
 global $conexao, $pdo;
 
+if (!function_exists('ubezap_env')) {
+    function ubezap_env($keys, $default)
+    {
+        foreach ((array) $keys as $key) {
+            $value = getenv($key);
+            if ($value !== false && $value !== '') {
+                return $value;
+            }
+        }
+        return $default;
+    }
+}
+
+if (!function_exists('ubezap_normalize_db_config')) {
+    function ubezap_normalize_db_config()
+    {
+        global $hostname, $user, $password, $database, $port;
+
+        $hostname = trim((string) $hostname);
+        if ($hostname === '') {
+            $hostname = '69.62.99.122';
+        }
+
+        $port = (int) $port;
+        if ($port < 1 || $port > 65535) {
+            $port = 1212;
+        }
+
+        if (!is_string($user) || trim($user) === '') {
+            $user = 'uberzapbd';
+        }
+        if (!is_string($password) || $password === '') {
+            $password = 'uberzapbd';
+        }
+        if (!is_string($database) || trim($database) === '') {
+            $database = 'uberzapbd';
+        }
+    }
+}
+
 // Easypanel / Docker: defina DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME no painel
-$hostname = getenv('DB_HOST') ?: (getenv('MYSQL_HOST') ?: '69.62.99.122');
-$user = getenv('DB_USER') ?: (getenv('MYSQL_USER') ?: 'uberzapbd');
-$password = getenv('DB_PASSWORD') ?: (getenv('MYSQL_PASSWORD') ?: 'uberzapbd');
-$database = getenv('DB_NAME') ?: (getenv('MYSQL_DATABASE') ?: 'uberzapbd');
-$port = (int) (getenv('DB_PORT') ?: (getenv('MYSQL_PORT') ?: 1212));
+$hostname = ubezap_env(['DB_HOST', 'MYSQL_HOST'], '69.62.99.122');
+$user = ubezap_env(['DB_USER', 'MYSQL_USER'], 'uberzapbd');
+$password = ubezap_env(['DB_PASSWORD', 'MYSQL_PASSWORD'], 'uberzapbd');
+$database = ubezap_env(['DB_NAME', 'MYSQL_DATABASE'], 'uberzapbd');
+$port = (int) ubezap_env(['DB_PORT', 'MYSQL_PORT'], '1212');
 
 if (file_exists(__DIR__ . '/config.db.php')) {
     include __DIR__ . '/config.db.php';
 }
+
+ubezap_normalize_db_config();
 
 date_default_timezone_set('America/Cuiaba');
 $secret = getenv('APP_SECRET') ?: 'abc1234';
@@ -58,6 +100,11 @@ if (!function_exists('ubezap_create_pdo')) {
         $attempts = [];
 
         $add = function ($host, $p) use (&$seen, &$attempts) {
+            $host = trim((string) $host);
+            $p = (int) $p;
+            if ($host === '' || $p < 1 || $p > 65535) {
+                return;
+            }
             $key = $host . ':' . $p;
             if (isset($seen[$key])) {
                 return;
@@ -66,18 +113,18 @@ if (!function_exists('ubezap_create_pdo')) {
             $attempts[] = ['host' => $host, 'port' => $p];
         };
 
+        ubezap_normalize_db_config();
         $add($hostname, $port);
+
         if ($port !== 3306) {
             $add($hostname, 3306);
         }
 
-        // PHP em Docker na mesma VM: IP público costuma falhar (hairpin NAT)
-        foreach (['127.0.0.1', 'host.docker.internal'] as $localHost) {
-            if ($localHost !== $hostname) {
-                $add($localHost, $port);
-                if ($port !== 3306) {
-                    $add($localHost, 3306);
-                }
+        // Fallback local só se o host principal não for localhost
+        if (!in_array($hostname, ['127.0.0.1', 'localhost'], true)) {
+            $add('127.0.0.1', $port);
+            if ($port !== 3306) {
+                $add('127.0.0.1', 3306);
             }
         }
 
@@ -87,6 +134,8 @@ if (!function_exists('ubezap_create_pdo')) {
     function ubezap_create_pdo()
     {
         global $user, $password, $database;
+
+        ubezap_normalize_db_config();
 
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

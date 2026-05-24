@@ -14,6 +14,8 @@ define ('URL_IMAGEM', DOMINIO . '/_/admin/uploads/');
 define('API_KEY_SMS', '4A4SC41ZDWK604KDAM5P1YRBZWSV02FBAL541RVBQ374NRUMCMOY162ETATC7GAOIQA1WFO1PDTPPMXCIHU19HP4WZG885Z9TA');
 //altere para a sua em https://smsdev.com.br
 
+require_once __DIR__ . '/conexao.php';
+
 
 //credenciais para bot do whatsapp
 define('PATCH_LIMPA_MSG', '316e783e-e696-4f42-87e8-6b9411a58796');
