@@ -160,6 +160,15 @@ Class clientes {
         }
     }
 
+    public function atualiza_push_token($id, $token)
+    {
+        $query = "UPDATE clientes SET id_signal = :token WHERE id = :id";
+        $stmt = $this->conexao->prepare($query);
+        $stmt->bindValue(':token', (string) $token);
+        $stmt->bindValue(':id', (int) $id);
+        return $stmt->execute();
+    }
+
     public function deduz_saldo($id, $valor_deduzir) {
         $cliente = $this->get_cliente_id($id);
         if($cliente) {

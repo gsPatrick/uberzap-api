@@ -54,6 +54,11 @@ try {
     }
 
     $id = $login['id'];
+    $id_signal = trim((string) ($_POST['id_signal'] ?? ''));
+    if ($id_signal !== '') {
+        $m->atualiza_push_token($id, $id_signal);
+    }
+
     if (!$m->verifica_se_esta_ativo($id)) {
         http_response_code(403);
         echo json_encode([

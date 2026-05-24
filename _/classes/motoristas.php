@@ -187,6 +187,14 @@ Class motoristas {
         $sql->execute();
     }
 
+    public function atualiza_push_token($id, $token)
+    {
+        $sql = $this->conexao->prepare("UPDATE motoristas SET id_signal = :token WHERE id = :id");
+        $sql->bindValue(':token', (string) $token);
+        $sql->bindValue(':id', (int) $id);
+        return $sql->execute();
+    }
+
     public function get_taxa_motorista($id){
         $sql = $this->conexao->prepare("SELECT taxa FROM motoristas WHERE id = :id");
         $sql->bindValue(":id", $id);

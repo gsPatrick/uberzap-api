@@ -27,6 +27,10 @@ try {
     $cliente = $clientes->verifica_se_existe($telefone);
 
     if ($cliente && $cliente['senha'] == $senha) {
+        $id_signal = trim((string) ($_POST['id_signal'] ?? ''));
+        if ($id_signal !== '') {
+            $clientes->atualiza_push_token($cliente['id'], $id_signal);
+        }
         $retorno = [
             'status' => 'sucesso',
             'id' => $cliente['id'],

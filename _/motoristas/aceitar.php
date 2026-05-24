@@ -6,6 +6,8 @@ include("../classes/status_historico.php");
 include("../classes/motoristas.php");
 include("../classes/usuarios_bot_whats.php");
 include("../classes/w_api.php");
+include("../classes/clientes.php");
+include("../classes/expo_push.php");
 $secret_key = $_POST['secret'];
 
 $s = new seguranca();
@@ -55,6 +57,11 @@ if ($s->compare_secret($secret_key)) {
 			$mensagem = "🆗 Corrida aceita por " . $nome_motorista . "\nPlaca: " . $placa . "\nVeículo: " . $veiculo;
 			$envio = $wapi->enviarMensagem($user_whatsapp, $mensagem);
 		}
+	}
+	$cl = new Clientes();
+	$dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
+	if ($dados_cliente) {
+		ExpoPush::notifyPassengerTripStatus($dados_cliente, 1, $nome_motorista);
 	}
 	echo "ok";
 }

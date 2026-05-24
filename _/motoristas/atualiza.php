@@ -10,6 +10,7 @@ include("../classes/transacoes.php");
 include("../classes/clientes.php");
 include("../classes/usuarios_bot_whats.php");
 include("../classes/w_api.php");
+include("../classes/expo_push.php");
 $secret_key = $_POST['secret'];
 
 $s = new seguranca();
@@ -92,6 +93,17 @@ if ($s->compare_secret($secret_key)) {
 				//limpa mensagens do usuario
 				$ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
 			}
+		}
+	}
+	$id_cliente = $dados_corrida['cliente_id'] ?? null;
+	if ($id_cliente) {
+		$dados_cliente_push = $cl->get_cliente_id($id_cliente);
+		if ($dados_cliente_push) {
+			ExpoPush::notifyPassengerTripStatus(
+				$dados_cliente_push,
+				$status,
+				$dados_motorista['nome'] ?? 'Motorista'
+			);
 		}
 	}
 	echo "ok";

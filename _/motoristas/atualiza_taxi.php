@@ -8,6 +8,8 @@ require_once __DIR__ . '/../classes/corridas.php';
 require_once __DIR__ . '/../classes/status_historico.php';
 require_once __DIR__ . '/../classes/motoristas.php';
 require_once __DIR__ . '/../classes/transacoes_motoristas.php';
+require_once __DIR__ . '/../classes/clientes.php';
+require_once __DIR__ . '/../classes/expo_push.php';
 
 $secret_key = $_POST['secret'] ?? '';
 
@@ -56,6 +58,16 @@ try {
     $c->update_taximetro($id_corrida, $taxa, $tempo, $km, $endereco_fim);
     $c->set_status($id_corrida, 4);
     $sh->salva_status($id_corrida, 'Taxímetro finalizado', 'App Motorista');
+
+    $corrida = $c->get_corrida_id($id_corrida);
+    if ($corrida && !empty($corrida['cliente_id'])) {
+        $cl = new Clientes();
+        $dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
+        if ($dados_cliente) {
+            ExpoPush::notifyPassengerTripStatus($dados_cliente, 4, $dados_motorista['nome'] ?? 'Motorista');
+        }
+    }
+
     echo 'ok';
 } catch (Throwable $e) {
     error_log('[atualiza_taxi.php] ' . $e->getMessage());
