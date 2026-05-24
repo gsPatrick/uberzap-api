@@ -14,6 +14,7 @@ if ($s->compare_secret($secret_key)) {
         exit;
     }
     
+
     $m = new motoristas();
     $dados = $m->get_motorista($id_motorista);
     

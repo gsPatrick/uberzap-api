@@ -67,10 +67,15 @@ Class clientes {
         }
     }
 
+    private function sqlDigitsOnly($column) {
+        return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE($column, '.', ''), '-', ''), '(', ''), ')', ''), ' ', ''), '/', '')";
+    }
+
     public function verifica_se_existe($telefone){
-        $query = "SELECT * FROM clientes WHERE telefone = :telefone";
+        $telefone_digits = preg_replace('/\D/', '', (string) $telefone);
+        $query = "SELECT * FROM clientes WHERE " . $this->sqlDigitsOnly('telefone') . " = :telefone";
         $stmt = $this->conexao->prepare($query);
-        $stmt->bindParam(':telefone', $telefone);
+        $stmt->bindParam(':telefone', $telefone_digits);
         $stmt->execute();
         $stmt->setFetchMode(PDO::FETCH_ASSOC);
         if($stmt->rowCount() > 0){

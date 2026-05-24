@@ -110,16 +110,33 @@ Class motoristas {
     
 
     public  function login_motorista($cpf, $senha){
-        $sql = $this->conexao->prepare("SELECT * FROM motoristas WHERE cpf = :cpf AND senha = :senha AND ativo =  '1'");
-        $sql->bindValue(":cpf", $cpf);
-        $sql->bindValue(":senha", $senha);
-        $sql->execute();
-        $dados = $sql->fetch();
-        if($dados){
-            return $dados;
-        } else {
+        require_once __DIR__ . '/../bd/normalize.php';
+        $digits = ubezap_digits_only($cpf);
+        if ($digits === '') {
             return false;
         }
+
+        $cpfExpr = ubezap_sql_digits_expr('cpf');
+        $telExpr = ubezap_sql_digits_expr('telefone');
+
+        $sql = $this->conexao->prepare(
+            "SELECT * FROM motoristas
+             WHERE senha = :senha
+               AND ativo = '1'
+               AND (
+                    $cpfExpr = :digits
+                    OR $telExpr = :digits
+               )
+             LIMIT 1"
+        );
+        $sql->bindValue(':digits', $digits);
+        $sql->bindValue(':senha', $senha);
+        $sql->execute();
+        $dados = $sql->fetch();
+        if ($dados) {
+            return $dados;
+        }
+        return false;
     }
 
     public function atualiza_coordenadas($id, $lat, $lng){
