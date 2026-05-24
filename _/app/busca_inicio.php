@@ -17,20 +17,9 @@ $cliente = $c->login($telefone, $senha);
 if ($cliente) {
     $cliente_id = $cliente['id'];
     $resposta = array();
-    $corridas = $crr->get_all_corridas_cliente($cliente_id, $telefone);
-    if ($corridas) {
-        $aberta = false;
-        foreach($corridas as $corrida){
-            if($corrida['status'] == 0 || $corrida['status'] == 1 || $corrida['status'] == 2 || $corrida['status'] == 3){
-                $aberta = true;
-                
-            }
-        }
-        if($aberta){
-            echo "1";
-        }else{
-            echo "";
-        }
+    $corridas = $crr->getAllCorridasAbertasCliente($cliente_id, $telefone);
+    if ($corridas && count($corridas) > 0) {
+        echo "1";
     } else {
         echo "";
     }
