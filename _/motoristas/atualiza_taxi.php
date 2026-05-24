@@ -64,7 +64,7 @@ try {
         $cl = new Clientes();
         $dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
         if ($dados_cliente) {
-            ExpoPush::notifyPassengerTripStatus($dados_cliente, 4, $dados_motorista['nome'] ?? 'Motorista');
+            ExpoPush::notifyPassengerTripStatus($dados_cliente, 4, $dados_motorista['nome'] ?? 'Motorista', $id_corrida);
         }
     }
 

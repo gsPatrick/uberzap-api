@@ -156,6 +156,18 @@ Class motoristas {
         $sql->execute();
     }
 
+    /** Motoristas online e disponíveis para receber corrida (online = 1, não em viagem). */
+    public function get_motoristas_online_disponiveis($cidade_id)
+    {
+        $sql = $this->conexao->prepare(
+            "SELECT * FROM motoristas WHERE cidade_id = :cidade_id AND ativo = '1' AND online = '1'"
+        );
+        $sql->bindValue(':cidade_id', $cidade_id);
+        $sql->execute();
+        $dados = $sql->fetchAll(PDO::FETCH_ASSOC);
+        return $dados ?: [];
+    }
+
     public function get_motorista_cpf($cpf){
         $sql = $this->conexao->prepare("SELECT * FROM motoristas WHERE cpf = :cpf");
         $sql->bindValue(":cpf", $cpf);

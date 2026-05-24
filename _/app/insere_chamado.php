@@ -6,6 +6,7 @@ include("../classes/status_historico.php");
 include_once "../classes/clientes.php";
 include_once "../classes/transacoes.php";
 include '../classes/cupons.php';
+include_once '../classes/expo_push.php';
 
 
 $corridas = new corridas();
@@ -57,5 +58,12 @@ if($cupom != ""){
 }
 
 $status_historico->salva_status($id, "Corrida solicitada", "Aplicativo");
-echo json_encode(array("id" => $id, "status" => "ok"));
+
+$corrida = $corridas->get_corrida_id($id);
+if ($corrida) {
+    ExpoPush::notifyPassengerTripStatus($cliente, 0, 'Motorista', $id);
+    ExpoPush::notifyOnlineDriversNewRide($cidade_id, $categoria_id, $corrida);
+}
+
+echo json_encode(array("id" => $id, "id_corrida" => $id, "status" => "ok"));
 }

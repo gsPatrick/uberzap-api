@@ -1,11 +1,15 @@
 <?php
 
+require_once __DIR__ . '/motoristas.php';
+
 /**
- * Envio de push via Expo Push API (app React Native / EAS).
- * Token formato: ExponentPushToken[xxxx]
+ * Push notifications via Expo Push API (app React Native / EAS).
+ * Token: ExponentPushToken[xxxx] — salvo em id_signal (clientes/motoristas).
  */
 class ExpoPush
 {
+    const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+
     public static function isExpoToken($token)
     {
         $t = trim((string) $token);
@@ -15,39 +19,70 @@ class ExpoPush
         );
     }
 
+    /**
+     * @return array{ok:bool,response?:string}
+     */
     public static function send($token, $title, $body, $data = [])
     {
         if (!self::isExpoToken($token)) {
-            return false;
+            return ['ok' => false];
         }
 
-        $payload = [
+        $type = $data['type'] ?? 'general';
+        $channelId = $data['channelId'] ?? ($type === 'ride_alert' ? 'ride_alert' : 'trip_status');
+
+        $message = [
             'to' => trim($token),
             'title' => (string) $title,
             'body' => (string) $body,
             'sound' => 'default',
             'priority' => 'high',
-            'data' => array_merge(['type' => 'trip_status'], $data),
+            'channelId' => $channelId,
+            'data' => array_merge(
+                [
+                    'type' => $type,
+                    'channelId' => $channelId,
+                ],
+                $data
+            ),
         ];
 
-        if (isset($data['channelId'])) {
-            $payload['channelId'] = $data['channelId'];
-        } elseif (isset($data['type']) && $data['type'] === 'ride_alert') {
-            $payload['channelId'] = 'ride_alert';
-        } else {
-            $payload['channelId'] = 'trip_status';
+        return self::postMessages([$message]);
+    }
+
+    /**
+     * Envia várias mensagens (até 100 por request Expo).
+     * @param array<int,array> $messages
+     */
+    public static function sendBatch(array $messages)
+    {
+        if (empty($messages)) {
+            return ['ok' => true, 'sent' => 0];
         }
 
-        $ch = curl_init('https://exp.host/--/api/v2/push/send');
+        $chunks = array_chunk($messages, 100);
+        $sent = 0;
+        foreach ($chunks as $chunk) {
+            $result = self::postMessages($chunk);
+            if ($result['ok']) {
+                $sent += count($chunk);
+            }
+        }
+        return ['ok' => $sent > 0, 'sent' => $sent];
+    }
+
+    private static function postMessages(array $messages)
+    {
+        $ch = curl_init(self::EXPO_PUSH_URL);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'Accept: application/json',
             ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_POSTFIELDS => json_encode($messages),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_TIMEOUT => 20,
         ]);
 
         $response = curl_exec($ch);
@@ -56,19 +91,22 @@ class ExpoPush
 
         if ($httpCode < 200 || $httpCode >= 300) {
             error_log('[ExpoPush] HTTP ' . $httpCode . ' — ' . $response);
-            return false;
+            return ['ok' => false, 'response' => $response];
         }
 
-        return true;
+        return ['ok' => true, 'response' => $response];
     }
 
-    public static function notifyPassengerTripStatus($cliente, $status, $motoristaNome = 'Motorista')
+    // ─── Passageiro ───────────────────────────────────────────────
+
+    public static function notifyPassengerTripStatus($cliente, $status, $motoristaNome = 'Motorista', $rideId = null)
     {
         if (!$cliente || empty($cliente['id_signal'])) {
             return false;
         }
 
         $messages = [
+            0 => ['Buscando motorista...', 'Sua corrida foi solicitada. Estamos procurando um motorista para você.'],
             1 => ['Motorista a caminho!', $motoristaNome . ' aceitou sua corrida e está indo até você.'],
             2 => ['Motorista no local!', 'Seu motorista chegou ao ponto de embarque.'],
             3 => ['Corrida iniciada!', 'Boa viagem! Você está a caminho do destino.'],
@@ -82,12 +120,31 @@ class ExpoPush
         }
 
         list($title, $body) = $messages[$st];
-        return self::send($cliente['id_signal'], $title, $body, [
+        $data = [
             'type' => 'trip_status',
             'status' => $st,
             'channelId' => 'trip_status',
-        ]);
+        ];
+        if ($rideId) {
+            $data['rideId'] = (string) $rideId;
+        }
+
+        $result = self::send($cliente['id_signal'], $title, $body, $data);
+        return $result['ok'];
     }
+
+    public static function notifyPassengerByClienteId($clienteId, $status, $motoristaNome = 'Motorista', $rideId = null)
+    {
+        require_once __DIR__ . '/clientes.php';
+        $cl = new Clientes();
+        $cliente = $cl->get_cliente_id($clienteId);
+        if (!$cliente) {
+            return false;
+        }
+        return self::notifyPassengerTripStatus($cliente, $status, $motoristaNome, $rideId);
+    }
+
+    // ─── Motorista ────────────────────────────────────────────────
 
     public static function notifyDriverNewRide($motorista, $ride)
     {
@@ -98,9 +155,9 @@ class ExpoPush
         $pickup = $ride['endereco_ini_txt'] ?? $ride['endereco_ini'] ?? 'Embarque';
         $dest = $ride['endereco_fim_txt'] ?? $ride['endereco_fim'] ?? 'Destino';
         $taxa = $ride['taxa'] ?? '';
-        $price = $taxa ? 'R$ ' . str_replace('.', ',', $taxa) : '';
+        $price = $taxa ? 'R$ ' . str_replace('.', ',', (string) $taxa) : '';
 
-        return self::send(
+        $result = self::send(
             $motorista['id_signal'],
             'Nova corrida disponível!',
             trim("$price — $pickup → $dest"),
@@ -110,5 +167,164 @@ class ExpoPush
                 'channelId' => 'ride_alert',
             ]
         );
+        return $result['ok'];
+    }
+
+    public static function notifyDriver($motorista, $title, $body, $data = [])
+    {
+        if (!$motorista || empty($motorista['id_signal'])) {
+            return false;
+        }
+        $payload = array_merge([
+            'type' => 'ride_alert',
+            'channelId' => 'ride_alert',
+        ], $data);
+        $result = self::send($motorista['id_signal'], $title, $body, $payload);
+        return $result['ok'];
+    }
+
+    public static function notifyDriverById($motoristaId, $title, $body, $data = [])
+    {
+        $m = new Motoristas();
+        $motorista = $m->get_motorista($motoristaId);
+        if (!$motorista || empty($motorista['id'])) {
+            return false;
+        }
+        return self::notifyDriver($motorista, $title, $body, $data);
+    }
+
+    public static function notifyDriverPassengerCancelled($motorista, $rideId = null)
+    {
+        return self::notifyDriver(
+            $motorista,
+            'Corrida cancelada',
+            'O passageiro cancelou a corrida.',
+            [
+                'type' => 'ride_alert',
+                'event' => 'passenger_cancelled',
+                'rideId' => $rideId ? (string) $rideId : '',
+            ]
+        );
+    }
+
+    public static function notifyDriverPassengerCancelledById($motoristaId, $rideId = null)
+    {
+        $m = new Motoristas();
+        $motorista = $m->get_motorista($motoristaId);
+        return self::notifyDriverPassengerCancelled($motorista, $rideId);
+    }
+
+    /**
+     * Nova corrida: notifica todos os motoristas online/disponíveis da cidade (categoria compatível).
+     */
+    public static function notifyOnlineDriversNewRide($cidadeId, $categoriaId, $corrida)
+    {
+        $m = new Motoristas();
+        $motoristas = $m->get_motoristas_online_disponiveis($cidadeId);
+        if (!$motoristas || !is_array($motoristas)) {
+            return 0;
+        }
+
+        $pickup = $corrida['endereco_ini_txt'] ?? $corrida['endereco_ini'] ?? 'Embarque';
+        $dest = $corrida['endereco_fim_txt'] ?? $corrida['endereco_fim'] ?? 'Destino';
+        $taxa = $corrida['taxa'] ?? '';
+        $price = $taxa ? 'R$ ' . str_replace('.', ',', (string) $taxa) : '';
+        $rideId = (string) ($corrida['id'] ?? '');
+
+        $batch = [];
+        foreach ($motoristas as $motorista) {
+            if (!self::motoristaAceitaCategoria($motorista, $categoriaId)) {
+                continue;
+            }
+            if (!self::isExpoToken($motorista['id_signal'] ?? '')) {
+                continue;
+            }
+
+            $batch[] = [
+                'to' => trim($motorista['id_signal']),
+                'title' => 'Nova corrida disponível!',
+                'body' => trim("$price — $pickup → $dest"),
+                'sound' => 'default',
+                'priority' => 'high',
+                'channelId' => 'ride_alert',
+                'data' => [
+                    'type' => 'ride_alert',
+                    'rideId' => $rideId,
+                    'channelId' => 'ride_alert',
+                ],
+            ];
+        }
+
+        if (empty($batch)) {
+            return 0;
+        }
+
+        $result = self::sendBatch($batch);
+        return (int) ($result['sent'] ?? 0);
+    }
+
+    /**
+     * Avisa motoristas online que a corrida não está mais disponível (aceita por outro, cancelada, expirada).
+     */
+    public static function notifyOnlineDriversRideUnavailable($cidadeId, $categoriaId, $rideId, $exceptMotoristaId = null, $body = 'A corrida não está mais disponível.')
+    {
+        $m = new Motoristas();
+        $motoristas = $m->get_motoristas_online_disponiveis($cidadeId);
+        if (!$motoristas || !is_array($motoristas)) {
+            return 0;
+        }
+
+        $rideIdStr = (string) $rideId;
+        $exceptId = $exceptMotoristaId !== null ? (int) $exceptMotoristaId : null;
+        $batch = [];
+
+        foreach ($motoristas as $motorista) {
+            if ($exceptId !== null && (int) ($motorista['id'] ?? 0) === $exceptId) {
+                continue;
+            }
+            if (!self::motoristaAceitaCategoria($motorista, $categoriaId)) {
+                continue;
+            }
+            if (!self::isExpoToken($motorista['id_signal'] ?? '')) {
+                continue;
+            }
+
+            $batch[] = [
+                'to' => trim($motorista['id_signal']),
+                'title' => 'Corrida indisponível',
+                'body' => (string) $body,
+                'sound' => 'default',
+                'priority' => 'high',
+                'channelId' => 'ride_alert',
+                'data' => [
+                    'type' => 'ride_alert',
+                    'event' => 'ride_unavailable',
+                    'rideId' => $rideIdStr,
+                    'channelId' => 'ride_alert',
+                ],
+            ];
+        }
+
+        if (empty($batch)) {
+            return 0;
+        }
+
+        $result = self::sendBatch($batch);
+        return (int) ($result['sent'] ?? 0);
+    }
+
+    private static function motoristaAceitaCategoria($motorista, $categoriaId)
+    {
+        $ids = json_decode($motorista['ids_categorias'] ?? '[]', true);
+        if (!is_array($ids)) {
+            return false;
+        }
+        $cat = (string) $categoriaId;
+        foreach ($ids as $id) {
+            if ((string) $id === $cat) {
+                return true;
+            }
+        }
+        return false;
     }
 }

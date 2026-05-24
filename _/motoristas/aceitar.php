@@ -61,7 +61,14 @@ if ($s->compare_secret($secret_key)) {
 	$cl = new Clientes();
 	$dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
 	if ($dados_cliente) {
-		ExpoPush::notifyPassengerTripStatus($dados_cliente, 1, $nome_motorista);
+		ExpoPush::notifyPassengerTripStatus($dados_cliente, 1, $nome_motorista, $id_corrida);
 	}
+	ExpoPush::notifyOnlineDriversRideUnavailable(
+		$corrida['cidade_id'],
+		$corrida['categoria_id'] ?? 0,
+		$id_corrida,
+		$id_motorista,
+		'Outro motorista aceitou esta corrida.'
+	);
 	echo "ok";
 }

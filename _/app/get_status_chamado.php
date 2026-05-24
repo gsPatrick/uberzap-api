@@ -9,6 +9,7 @@ require_once __DIR__ . '/../classes/clientes.php';
 require_once __DIR__ . '/../classes/motoristas.php';
 require_once __DIR__ . '/../classes/mensagens.php';
 require_once __DIR__ . '/../classes/avaliacoes.php';
+require_once __DIR__ . '/../classes/expo_push.php';
 require_once __DIR__ . '/../classes/tempo.php';
 require_once __DIR__ . '/../classes/status_historico.php';
 require_once __DIR__ . '/../classes/maps.php';
@@ -40,21 +41,45 @@ if ($corridas_abertas && count($corridas_abertas) > 0) {
     $corrida = $corridas_abertas[0];
 } else {
     $historico = $crr->get_all_corridas_cliente($cliente_id, $telefone);
-    if (!$historico || count($historico) === 0) {
-        echo json_encode(['status' => 0], JSON_UNESCAPED_UNICODE);
-        exit;
+    $avaliacao_pendente = null;
+
+    if ($historico && count($historico) > 0) {
+        $ultima = $historico[0];
+        $ultimo_status = (int) $ultima['status'];
+
+        if ($ultimo_status === 4 && !$a->verifica_avaliacao($ultima['id'])) {
+            $avaliacao_pendente = [
+                'id' => $ultima['id'],
+                'taxa' => $ultima['taxa'],
+                'lat_ini' => $ultima['lat_ini'],
+                'lng_ini' => $ultima['lng_ini'],
+                'lat_fim' => $ultima['lat_fim'],
+                'lng_fim' => $ultima['lng_fim'],
+                'endereco_ini_txt' => $ultima['endereco_ini_txt'] ?? '',
+                'endereco_fim_txt' => $ultima['endereco_fim_txt'] ?? '',
+            ];
+
+            if (!empty($ultima['motorista_id'])) {
+                $dados_motorista = $m->get_motorista($ultima['motorista_id']);
+                if ($dados_motorista) {
+                    $avaliacao_pendente['motorista'] = [
+                        'id' => $dados_motorista['id'],
+                        'nome' => $dados_motorista['nome'],
+                        'foto' => $dados_motorista['img'],
+                        'placa' => $dados_motorista['placa'],
+                        'veiculo' => $dados_motorista['veiculo'],
+                        'rating' => $a->get_media_avaliacoes($dados_motorista['id']),
+                    ];
+                }
+            }
+        }
     }
 
-    $ultima = $historico[0];
-    $ultimo_status = (int) $ultima['status'];
-
-    // Corrida encerrada/cancelada: só reabre fluxo de avaliação se finalizada e ainda não avaliada
-    if ($ultimo_status === 4 && !$a->verifica_avaliacao($ultima['id'])) {
-        $corrida = $ultima;
-    } else {
-        echo json_encode(['status' => 0], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
+    echo json_encode([
+        'status' => 0,
+        'avaliacao_pendente' => $avaliacao_pendente,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 $status = (int) $corrida['status'];
@@ -67,6 +92,14 @@ if ($status === 0) {
     if ($tempo > $tempo_cancelamento) {
         $crr->set_status($corrida['id'], 5);
         $sh->salva_status($corrida['id'], 'Cancelado automaticamente após ' . $tempo_cancelamento . ' minutos', 'Sistema');
+        ExpoPush::notifyPassengerByClienteId($cliente_id, 5, 'Motorista', $corrida['id']);
+        ExpoPush::notifyOnlineDriversRideUnavailable(
+            $corrida['cidade_id'],
+            $corrida['categoria_id'] ?? 0,
+            $corrida['id'],
+            null,
+            'A corrida expirou e foi cancelada.'
+        );
         echo json_encode(['status' => 0], JSON_UNESCAPED_UNICODE);
         exit;
     }

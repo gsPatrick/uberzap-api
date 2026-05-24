@@ -5,6 +5,8 @@ include("../classes/corridas.php");
 include_once "../classes/clientes.php";
 include_once "../classes/alertas_motoristas.php";
 include_once "../classes/status_historico.php";
+include_once "../classes/expo_push.php";
+include_once "../classes/motoristas.php";
 
 $crr = new corridas();
 $c = new Clientes();
@@ -18,20 +20,27 @@ $cliente = $c->login($telefone, $senha);
 
 if ($cliente) {
     $cliente_id = $cliente['id'];
-    $valor_multa = 5.00; // Valor fixo da multa
-    $tempo_tolerancia = 300; // 5 minutos em segundos
+    $valor_multa = 5.00;
+    $tempo_tolerancia = 300;
+    $rideId = null;
+    $motorista_id = 0;
+    $cidade_id = null;
+    $categoria_id = 0;
 
-    // Verifica se tem corrida em andamento
     $corridas_em_andamento = $crr->getAllCorridasAbertasCliente($cliente_id);
-    if($corridas_em_andamento){
+    if ($corridas_em_andamento) {
         $corrida = $corridas_em_andamento[0];
         $id_corrida = $corrida['id'];
+        $rideId = $id_corrida;
         $motorista_id = $corrida['motorista_id'];
+        $cidade_id = $corrida['cidade_id'] ?? $cliente['cidade_id'];
+        $categoria_id = $corrida['categoria_id'] ?? 0;
         
         // Só aplica multa se já tiver motorista aceito
         if($motorista_id != 0){
             $msg = "Corrida cancelada pelo cliente"; 
             $am->insere($motorista_id, $msg);
+            ExpoPush::notifyDriverPassengerCancelledById($motorista_id, $rideId);
             
             // Busca histórico para ver hora do aceite
             $historico = $sh->get_status($id_corrida);
@@ -56,7 +65,17 @@ if ($cliente) {
         }
     }
 
-    if($crr->cancelar_corrida($cliente_id)){ // Cancela a corrida (status 5)
+    if($crr->cancelar_corrida($cliente_id)){
+        ExpoPush::notifyPassengerTripStatus($cliente, 5, 'Motorista', $rideId);
+        if ($motorista_id == 0 && $cidade_id && $rideId) {
+            ExpoPush::notifyOnlineDriversRideUnavailable(
+                $cidade_id,
+                $categoria_id,
+                $rideId,
+                null,
+                'O passageiro cancelou a corrida.'
+            );
+        }
         echo "ok";
     }else{
         echo "erro";

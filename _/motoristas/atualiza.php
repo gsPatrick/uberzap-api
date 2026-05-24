@@ -99,11 +99,15 @@ if ($s->compare_secret($secret_key)) {
 	if ($id_cliente) {
 		$dados_cliente_push = $cl->get_cliente_id($id_cliente);
 		if ($dados_cliente_push) {
-			ExpoPush::notifyPassengerTripStatus(
-				$dados_cliente_push,
-				$status,
-				$dados_motorista['nome'] ?? 'Motorista'
-			);
+			$st = (int) $status;
+			if (in_array($st, [2, 3, 4, 5], true)) {
+				ExpoPush::notifyPassengerTripStatus(
+					$dados_cliente_push,
+					$st,
+					$dados_motorista['nome'] ?? 'Motorista',
+					$id_corrida
+				);
+			}
 		}
 	}
 	echo "ok";

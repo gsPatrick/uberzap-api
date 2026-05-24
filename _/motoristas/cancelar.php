@@ -7,6 +7,8 @@ require_once __DIR__ . '/../classes/corridas.php';
 require_once __DIR__ . '/../classes/seguranca.php';
 require_once __DIR__ . '/../classes/status_historico.php';
 require_once __DIR__ . '/../classes/motoristas.php';
+require_once __DIR__ . '/../classes/clientes.php';
+require_once __DIR__ . '/../classes/expo_push.php';
 
 $secret_key = $_POST['secret'] ?? '';
 
@@ -47,5 +49,11 @@ if (!empty($corrida['motorista_id'])) {
 $c->set_status($id_corrida, 5);
 $c->altera_motorista($id_corrida, 0);
 $sh->salva_status($id_corrida, $nome_motorista . ' cancelou a corrida', 'App Motorista');
+
+$cl = new Clientes();
+$dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
+if ($dados_cliente) {
+    ExpoPush::notifyPassengerTripStatus($dados_cliente, 5, $nome_motorista, $id_corrida);
+}
 
 echo 'ok';
