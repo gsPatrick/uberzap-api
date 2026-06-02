@@ -148,26 +148,47 @@ class ExpoPush
 
     public static function notifyDriverNewRide($motorista, $ride)
     {
-        if (!$motorista || empty($motorista['id_signal'])) {
+        if (!$motorista || empty($motorista['id_signal']) || !self::isExpoToken($motorista['id_signal'])) {
             return false;
         }
 
-        $pickup = $ride['endereco_ini_txt'] ?? $ride['endereco_ini'] ?? 'Embarque';
-        $dest = $ride['endereco_fim_txt'] ?? $ride['endereco_fim'] ?? 'Destino';
-        $taxa = $ride['taxa'] ?? '';
-        $price = $taxa ? 'R$ ' . str_replace('.', ',', (string) $taxa) : '';
-
-        $result = self::send(
-            $motorista['id_signal'],
-            'Nova corrida disponível!',
-            trim("$price — $pickup → $dest"),
-            [
-                'type' => 'ride_alert',
-                'rideId' => (string) ($ride['id'] ?? ''),
-                'channelId' => 'ride_alert',
-            ]
-        );
+        // Data-only: sem título/texto. O app do motorista desenha o card full-screen
+        // (com infos da corrida + Aceitar/Recusar) a partir destes dados.
+        $message = self::buildDriverRideMessage($motorista['id_signal'], $ride);
+        $result = self::postMessages([$message]);
         return $result['ok'];
+    }
+
+    /** Dados da corrida enviados no push data-only para o card rico do motorista. */
+    private static function driverRideData($corrida, $extra = [])
+    {
+        return array_merge([
+            'type' => 'ride_alert',
+            'channelId' => 'ride_alert',
+            'rideId' => (string) ($corrida['id'] ?? ''),
+            'taxa' => (string) ($corrida['taxa'] ?? ''),
+            'endereco_ini_txt' => (string) ($corrida['endereco_ini_txt'] ?? $corrida['endereco_ini'] ?? ''),
+            'endereco_fim_txt' => (string) ($corrida['endereco_fim_txt'] ?? $corrida['endereco_fim'] ?? ''),
+            'km' => (string) ($corrida['km'] ?? ''),
+            'tempo' => (string) ($corrida['tempo'] ?? ''),
+            'f_pagamento' => (string) ($corrida['forma_pagamento'] ?? $corrida['f_pagamento'] ?? ''),
+            'nome_cliente' => (string) ($corrida['nome_cliente'] ?? $corrida['nome'] ?? $corrida['cliente'] ?? ''),
+            'nota_cliente' => (string) ($corrida['nota_cliente'] ?? ''),
+            'cidade_id' => (string) ($corrida['cidade_id'] ?? ''),
+            'categoria_id' => (string) ($corrida['categoria_id'] ?? ''),
+        ], $extra);
+    }
+
+    /** Mensagem Expo "data-only" (sem title/body) de alerta de corrida. */
+    private static function buildDriverRideMessage($token, $corrida, $extra = [])
+    {
+        return [
+            'to' => trim($token),
+            'data' => self::driverRideData($corrida, $extra),
+            'priority' => 'high',
+            'channelId' => 'ride_alert',
+            '_contentAvailable' => true,
+        ];
     }
 
     public static function notifyDriver($motorista, $title, $body, $data = [])
@@ -195,16 +216,24 @@ class ExpoPush
 
     public static function notifyDriverPassengerCancelled($motorista, $rideId = null)
     {
-        return self::notifyDriver(
-            $motorista,
-            'Corrida cancelada',
-            'O passageiro cancelou a corrida.',
-            [
+        if (!$motorista || empty($motorista['id_signal']) || !self::isExpoToken($motorista['id_signal'])) {
+            return false;
+        }
+        // Data-only: fecha o card do motorista e para o som.
+        $message = [
+            'to' => trim($motorista['id_signal']),
+            'priority' => 'high',
+            'channelId' => 'ride_alert',
+            '_contentAvailable' => true,
+            'data' => [
                 'type' => 'ride_alert',
                 'event' => 'passenger_cancelled',
                 'rideId' => $rideId ? (string) $rideId : '',
-            ]
-        );
+                'channelId' => 'ride_alert',
+            ],
+        ];
+        $result = self::postMessages([$message]);
+        return $result['ok'];
     }
 
     public static function notifyDriverPassengerCancelledById($motoristaId, $rideId = null)
@@ -225,12 +254,6 @@ class ExpoPush
             return 0;
         }
 
-        $pickup = $corrida['endereco_ini_txt'] ?? $corrida['endereco_ini'] ?? 'Embarque';
-        $dest = $corrida['endereco_fim_txt'] ?? $corrida['endereco_fim'] ?? 'Destino';
-        $taxa = $corrida['taxa'] ?? '';
-        $price = $taxa ? 'R$ ' . str_replace('.', ',', (string) $taxa) : '';
-        $rideId = (string) ($corrida['id'] ?? '');
-
         $batch = [];
         foreach ($motoristas as $motorista) {
             if (!self::motoristaAceitaCategoria($motorista, $categoriaId)) {
@@ -240,19 +263,8 @@ class ExpoPush
                 continue;
             }
 
-            $batch[] = [
-                'to' => trim($motorista['id_signal']),
-                'title' => 'Nova corrida disponível!',
-                'body' => trim("$price — $pickup → $dest"),
-                'sound' => 'default',
-                'priority' => 'high',
-                'channelId' => 'ride_alert',
-                'data' => [
-                    'type' => 'ride_alert',
-                    'rideId' => $rideId,
-                    'channelId' => 'ride_alert',
-                ],
-            ];
+            // Data-only: o app desenha o card full-screen (estilo Uber).
+            $batch[] = self::buildDriverRideMessage($motorista['id_signal'], $corrida);
         }
 
         if (empty($batch)) {
@@ -289,13 +301,12 @@ class ExpoPush
                 continue;
             }
 
+            // Data-only: o app fecha o card e para o som, sem mostrar texto cru.
             $batch[] = [
                 'to' => trim($motorista['id_signal']),
-                'title' => 'Corrida indisponível',
-                'body' => (string) $body,
-                'sound' => 'default',
                 'priority' => 'high',
                 'channelId' => 'ride_alert',
+                '_contentAvailable' => true,
                 'data' => [
                     'type' => 'ride_alert',
                     'event' => 'ride_unavailable',
