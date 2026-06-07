@@ -26,32 +26,32 @@ if (!function_exists('ubezap_normalize_db_config')) {
 
         $hostname = trim((string) $hostname);
         if ($hostname === '') {
-            $hostname = '69.62.99.122';
+            $hostname = '195.250.26.221';
         }
 
         $port = (int) $port;
         if ($port < 1 || $port > 65535) {
-            $port = 1212;
+            $port = 3306;
         }
 
         if (!is_string($user) || trim($user) === '') {
-            $user = 'uberzapbd';
+            $user = 'uberzapapp_transporte';
         }
         if (!is_string($password) || $password === '') {
-            $password = 'uberzapbd';
+            $password = '59qM?6obK^89XSD;';
         }
         if (!is_string($database) || trim($database) === '') {
-            $database = 'uberzapbd';
+            $database = 'uberzapapp_transporte';
         }
     }
 }
 
 // Easypanel / Docker: defina DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME no painel
-$hostname = ubezap_env(['DB_HOST', 'MYSQL_HOST'], '69.62.99.122');
-$user = ubezap_env(['DB_USER', 'MYSQL_USER'], 'uberzapbd');
-$password = ubezap_env(['DB_PASSWORD', 'MYSQL_PASSWORD'], 'uberzapbd');
-$database = ubezap_env(['DB_NAME', 'MYSQL_DATABASE'], 'uberzapbd');
-$port = (int) ubezap_env(['DB_PORT', 'MYSQL_PORT'], '1212');
+$hostname = ubezap_env(['DB_HOST', 'MYSQL_HOST'], '195.250.26.221');
+$user = ubezap_env(['DB_USER', 'MYSQL_USER'], 'uberzapapp_transporte');
+$password = ubezap_env(['DB_PASSWORD', 'MYSQL_PASSWORD'], '59qM?6obK^89XSD;');
+$database = ubezap_env(['DB_NAME', 'MYSQL_DATABASE'], 'uberzapapp_transporte');
+$port = (int) ubezap_env(['DB_PORT', 'MYSQL_PORT'], '3306');
 
 if (file_exists(__DIR__ . '/config.db.php')) {
     include __DIR__ . '/config.db.php';
