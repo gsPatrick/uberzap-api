@@ -46,21 +46,22 @@ if (!function_exists('ubezap_normalize_db_config')) {
     }
 }
 
-// Easypanel / Docker: defina DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME no painel
-$hostname = ubezap_env(['DB_HOST', 'MYSQL_HOST'], '195.250.26.221');
-$user = ubezap_env(['DB_USER', 'MYSQL_USER'], 'uberzapapp_transporte');
-$password = ubezap_env(['DB_PASSWORD', 'MYSQL_PASSWORD'], '59qM?6obK^89XSD;');
-$database = ubezap_env(['DB_NAME', 'MYSQL_DATABASE'], 'uberzapapp_transporte');
-$port = (int) ubezap_env(['DB_PORT', 'MYSQL_PORT'], '3306');
-
-if (file_exists(__DIR__ . '/config.db.php')) {
-    include __DIR__ . '/config.db.php';
-}
+// =========================================================================
+//  PRODUÇÃO HARDCODED — credenciais fixas, IGNORANDO variáveis de ambiente.
+//  Motivo: o env do painel apontava para homologação e, por ter prioridade,
+//  sobrescrevia estes valores (o app conectava no banco errado/morto).
+//  Para voltar a usar env/config.db.php, restaure o bloco ubezap_env() acima.
+// =========================================================================
+$hostname = '195.250.26.221';
+$user     = 'uberzapapp_transporte';
+$password = '59qM?6obK^89XSD;';
+$database = 'uberzapapp_transporte';
+$port     = 3306;
 
 ubezap_normalize_db_config();
 
 date_default_timezone_set('America/Cuiaba');
-$secret = getenv('APP_SECRET') ?: 'abc1234';
+$secret = 'abc1234';
 
 if (!function_exists('ubezap_db_fail')) {
     function ubezap_db_fail($message, Throwable $e = null)
