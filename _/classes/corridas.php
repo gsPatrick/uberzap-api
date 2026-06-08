@@ -246,14 +246,22 @@ class corridas
         }
     }
 
-    public function update_taximetro($corrida_id, $taxa, $tempo, $km, $endereco_fim_txt)
+    public function update_taximetro($corrida_id, $taxa, $tempo, $km, $endereco_fim_txt, $lat_fim = null, $lng_fim = null)
     {
-        $query = "UPDATE corridas SET taxa = :taxa, tempo = :tempo, km = :km, endereco_fim_txt = :endereco_fim_txt WHERE id = :id";
+        // Atualiza lat_fim/lng_fim só quando vierem (ex.: corrida sem destino, capturado no fim)
+        $setCoords = ($lat_fim !== null && $lng_fim !== null && trim((string) $lat_fim) !== '' && trim((string) $lng_fim) !== '');
+        $query = "UPDATE corridas SET taxa = :taxa, tempo = :tempo, km = :km, endereco_fim_txt = :endereco_fim_txt"
+            . ($setCoords ? ", lat_fim = :lat_fim, lng_fim = :lng_fim" : "")
+            . " WHERE id = :id";
         $stmt = $this->conexao->prepare($query);
         $stmt->bindParam(':taxa', $taxa);
         $stmt->bindParam(':tempo', $tempo);
         $stmt->bindParam(':km', $km);
         $stmt->bindParam(':endereco_fim_txt', $endereco_fim_txt);
+        if ($setCoords) {
+            $stmt->bindParam(':lat_fim', $lat_fim);
+            $stmt->bindParam(':lng_fim', $lng_fim);
+        }
         $stmt->bindParam(':id', $corrida_id);
         $stmt->execute();
         if ($stmt->rowCount() > 0) {

@@ -28,6 +28,8 @@ $taxa = str_replace(',', '.', (string) ($_POST['taxa'] ?? '0'));
 $tempo = (string) ($_POST['tempo'] ?? '1');
 $km = str_replace(',', '.', (string) ($_POST['km'] ?? '0'));
 $endereco_fim = trim((string) ($_POST['endereco_fim'] ?? 'Destino não informado'));
+$lat_fim = trim((string) ($_POST['lat_fim'] ?? ''));
+$lng_fim = trim((string) ($_POST['lng_fim'] ?? ''));
 
 if ($id_motorista < 1 || $id_corrida < 1 || $id_cidade < 1) {
     http_response_code(400);
@@ -74,7 +76,7 @@ try {
     $taxa_fmt = number_format($valor_corrida, 2, '.', '');
 
     // 1) Finaliza corrida primeiro (passageiro/motorista veem status 4)
-    $c->update_taximetro($id_corrida, $taxa_fmt, $tempo, $km, $endereco_fim);
+    $c->update_taximetro($id_corrida, $taxa_fmt, $tempo, $km, $endereco_fim, $lat_fim, $lng_fim);
     $c->atualiza_taxa($id_corrida, $taxa_fmt);
     $c->set_status($id_corrida, 4);
     $sh->salva_status($id_corrida, 'Taxímetro finalizado', 'App Motorista');
