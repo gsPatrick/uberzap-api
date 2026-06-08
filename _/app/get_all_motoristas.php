@@ -11,7 +11,8 @@ $telefone = $_POST['telefone'];
 $cliente = $c ->login($telefone, $senha);
 if($cliente){
     $cidade_id = $cliente['cidade_id'];
-    $motoristas = $m ->get_all_motoristas($cidade_id);
+    // Só motoristas ONLINE da cidade, com coordenadas válidas (radar de carrinhos).
+    $motoristas = $m ->get_motoristas_proximos($cidade_id);
     $dados_retorno = array();
     if($motoristas){
         foreach($motoristas as $motorista){
@@ -20,7 +21,8 @@ if($cliente){
                 "latitude" => $motorista['latitude'],
                 "longitude" => $motorista['longitude'],
                 "ativo" => $motorista['ativo'],
-                "online" => $motorista['online']
+                "online" => $motorista['online'],
+                "veiculo" => $motorista['veiculo'] ?? ''
             );
         }
         if(count($dados_retorno) > 0){
