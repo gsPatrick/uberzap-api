@@ -32,6 +32,10 @@ if ($dados_motorista) {
         foreach ($lista as $transacao) {
             $transacao['date'] = $tmp->data_mysql_para_user($transacao['date'] ?? '')
                 . " " . $tmp->hora_mysql_para_user($transacao['date'] ?? '');
+            // Campos derivados pra compatibilidade com o app (espera descricao/tipo)
+            $metodo = (string) ($transacao['metodo'] ?? '');
+            $transacao['descricao'] = $metodo !== '' ? $metodo : 'Transação';
+            $transacao['tipo'] = preg_match('/(d[ée]bito|saque|debit)/i', $metodo) ? 'Saque' : 'Credito';
             $transacoes[] = $transacao;
         }
     }
