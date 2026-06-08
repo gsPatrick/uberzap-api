@@ -92,14 +92,13 @@ Class motoristas {
         }
     }
 
-    // Motoristas ONLINE da cidade com coordenadas válidas (para o radar de carrinhos no mapa).
+    // Motoristas da cidade (online E offline) com coordenadas válidas (para o radar de carrinhos no mapa).
     public function get_motoristas_proximos($cidade_id){
         $sql = $this->conexao->prepare(
             "SELECT id, latitude, longitude, veiculo, placa, ids_categorias, online, ativo
              FROM motoristas
              WHERE cidade_id = :cid
                AND ativo = '1'
-               AND online <> 0
                AND latitude IS NOT NULL AND latitude <> '' AND latitude <> '0'
                AND longitude IS NOT NULL AND longitude <> '' AND longitude <> '0'"
         );
