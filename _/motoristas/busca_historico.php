@@ -41,6 +41,13 @@ function ubezap_format_ride_row($row, corridas $c)
         'f_pagamento' => $row['f_pagamento'] ?? '',
         'metodo_pagamento' => $row['f_pagamento'] ?? '',
         'nome_cliente' => $row['nome_cliente'] ?? 'Passageiro',
+        'cliente_id' => $row['cliente_id'] ?? null,
+        'img_user' => $row['img_user'] ?? '',
+        'foto_cliente' => $row['img_user'] ?? '',
+        'user_whatsapp' => $row['user_whatsapp'] ?? '',
+        'obs' => $row['obs'] ?? '',
+        'categoria_id' => $row['categoria_id'] ?? null,
+        'avaliacao' => null,
         'date' => $row['date'] ?? '',
     ];
 }
@@ -90,9 +97,26 @@ try {
         }
     }
 
+    // Avaliação por corrida (JOIN manual com a tabela avaliacoes)
+    $avStmt = $pdo->prepare(
+        "SELECT nota, comentario, date FROM avaliacoes WHERE corrida_id = :cid ORDER BY id DESC LIMIT 1"
+    );
+
     $out = [];
     foreach ($corridas as $row) {
-        $out[] = ubezap_format_ride_row($row, $c);
+        $item = ubezap_format_ride_row($row, $c);
+        if (!empty($row['id'])) {
+            $avStmt->execute([':cid' => $row['id']]);
+            $av = $avStmt->fetch(PDO::FETCH_ASSOC);
+            if ($av) {
+                $item['avaliacao'] = [
+                    'nota' => (int) ($av['nota'] ?? 0),
+                    'comentario' => $av['comentario'] ?? '',
+                    'date' => $av['date'] ?? '',
+                ];
+            }
+        }
+        $out[] = $item;
     }
 
     echo json_encode($out, JSON_UNESCAPED_UNICODE);
