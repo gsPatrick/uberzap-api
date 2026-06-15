@@ -183,26 +183,25 @@ if ($s->compare_secret($secret_key)) {
 			$tm->insereTransacao($id_motorista, 'N/A', $taxa_motorista, 'DEBITO CORRIDA', 'CONCLUIDO');
 		}
 	}
-	// === MENSAGENS WHATSAPP ===
+	// === MENSAGENS WHATSAPP === (sem gate get_msgs; best-effort + log de diagnostico)
 $user_whatsapp = isset($dados_corrida['user_whatsapp']) ? $dados_corrida['user_whatsapp'] : null;
+@file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza_b corrida=" . ($id_corrida ?? '?') . " status=$status user_whatsapp=" . var_export($user_whatsapp, true) . "\n", FILE_APPEND);
 if ($user_whatsapp) {
-    $tem_mensagens = $ubw->get_msgs($user_whatsapp);
-    if ($tem_mensagens) {
+    try {
         $wapi = new w_api(W_API_TOKEN, W_API_ID);
-        // pega motorista atualizado
         $dados_motorista = $id_motorista ? $m->get_motorista($id_motorista) : null;
-        try {
-            if ($status == 2) {
-                $wapi->enviarMensagem($user_whatsapp, "📌 O motorista chegou ao local de embarque. Placa: " . ($dados_motorista['placa'] ?? ''));
-            } elseif ($status == 3) {
-                $wapi->enviarMensagem($user_whatsapp, "🚗 A corrida foi iniciada. Boa viagem!");
-            } elseif ($status == 4) {
-                $wapi->enviarMensagem($user_whatsapp, "✅ Corrida finalizada.\nValor: R$ " . number_format($valor_corrida, 2, ',', '.') . "\n\nAgradecemos a preferência!");
-                $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
-            }
-        } catch (Throwable $t) {
-            // não interrompe processo se falhar a mensagem
+        $envio = null;
+        if ($status == 2) {
+            $envio = $wapi->enviarMensagem($user_whatsapp, "📌 O motorista chegou ao local de embarque. Placa: " . ($dados_motorista['placa'] ?? ''));
+        } elseif ($status == 3) {
+            $envio = $wapi->enviarMensagem($user_whatsapp, "🚗 A corrida foi iniciada. Boa viagem!");
+        } elseif ($status == 4) {
+            $envio = $wapi->enviarMensagem($user_whatsapp, "✅ Corrida finalizada.\nValor: R$ " . number_format($valor_corrida, 2, ',', '.') . "\n\nAgradecemos a preferência!");
+            $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
         }
+        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza_b envio status=$status -> " . json_encode($envio) . "\n", FILE_APPEND);
+    } catch (Throwable $t) {
+        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza_b ERRO: " . $t->getMessage() . "\n", FILE_APPEND);
     }
 }
 	$valor_corrida = number_format($valor_corrida, 2, ',', '');

@@ -98,7 +98,7 @@ try {
     // Notificação WhatsApp (passageiro via SOL/IA) — best-effort, NUNCA quebra o update.
     try {
         $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
-        error_log('[atualiza.php] corrida=' . $id_corrida . ' status=' . $status . ' user_whatsapp=' . var_export($user_whatsapp, true));
+        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza corrida=$id_corrida status=$status user_whatsapp=" . var_export($user_whatsapp, true) . "\n", FILE_APPEND);
         if ($user_whatsapp && $dados_motorista) {
             $wapi = new w_api(W_API_TOKEN, W_API_ID);
             $envio = null;
@@ -110,10 +110,10 @@ try {
                 $envio = $wapi->enviarMensagem($user_whatsapp, "✅ A corrida foi finalizada.\nValor da corrida: R$ " . ($dados_corrida['taxa'] ?? '') . "\n\nAgradecemos a preferência!");
                 $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
             }
-            error_log('[atualiza.php] WhatsApp status=' . $status . ' envio=' . json_encode($envio));
+            @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza envio status=$status -> " . json_encode($envio) . "\n", FILE_APPEND);
         }
     } catch (Throwable $waErr) {
-        error_log('[atualiza.php] WhatsApp: ' . $waErr->getMessage());
+        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza ERRO: " . $waErr->getMessage() . "\n", FILE_APPEND);
     }
 
     // Push (passageiro do app) — best-effort, NUNCA quebra o update.
