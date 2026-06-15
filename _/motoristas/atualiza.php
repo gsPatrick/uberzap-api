@@ -7,6 +7,7 @@ header('Content-Type: text/plain; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
 require_once __DIR__ . '/../bd/conexao.php';
+require_once __DIR__ . '/../bd/config.php'; // define W_API_ID / W_API_TOKEN / PATCH_LIMPA_MSG (faltava -> WhatsApp de status nao saia)
 require_once __DIR__ . '/../classes/corridas.php';
 require_once __DIR__ . '/../classes/seguranca.php';
 require_once __DIR__ . '/../classes/status_historico.php';
