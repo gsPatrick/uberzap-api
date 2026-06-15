@@ -1,4 +1,8 @@
 <?php
+// A resposta é texto puro ('ok'); qualquer warning/notice impresso corromperia
+// a resposta e o app trataria como falha mesmo o status tendo sido salvo.
+error_reporting(E_ERROR | E_PARSE);
+ini_set('display_errors', '0');
 header('Content-Type: text/plain; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
@@ -91,10 +95,10 @@ try {
         }
     }
 
-    $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
-    if ($user_whatsapp && $dados_motorista) {
-        $tem_mensagens = $ubw->get_msgs($user_whatsapp);
-        if ($tem_mensagens) {
+    // Notificação WhatsApp (passageiro via SOL/IA) — best-effort, NUNCA quebra o update.
+    try {
+        $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
+        if ($user_whatsapp && $dados_motorista) {
             $wapi = new w_api(W_API_TOKEN, W_API_ID);
             if ($status == 2) {
                 $wapi->enviarMensagem($user_whatsapp, '📌 O motorista chegou ao local de embarque. Placa do veículo: ' . ($dados_motorista['placa'] ?? ''));
@@ -105,22 +109,29 @@ try {
                 $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
             }
         }
+    } catch (Throwable $waErr) {
+        error_log('[atualiza.php] WhatsApp: ' . $waErr->getMessage());
     }
 
-    $id_cliente = $dados_corrida['cliente_id'] ?? null;
-    if ($id_cliente && $dados_motorista) {
-        $dados_cliente_push = $cl->get_cliente_id($id_cliente);
-        if ($dados_cliente_push) {
-            $st = (int) $status;
-            if (in_array($st, [2, 3, 4, 5], true)) {
-                ExpoPush::notifyPassengerTripStatus(
-                    $dados_cliente_push,
-                    $st,
-                    $dados_motorista['nome'] ?? 'Motorista',
-                    $id_corrida
-                );
+    // Push (passageiro do app) — best-effort, NUNCA quebra o update.
+    try {
+        $id_cliente = $dados_corrida['cliente_id'] ?? null;
+        if ($id_cliente && $dados_motorista) {
+            $dados_cliente_push = $cl->get_cliente_id($id_cliente);
+            if ($dados_cliente_push) {
+                $st = (int) $status;
+                if (in_array($st, [2, 3, 4, 5], true)) {
+                    ExpoPush::notifyPassengerTripStatus(
+                        $dados_cliente_push,
+                        $st,
+                        $dados_motorista['nome'] ?? 'Motorista',
+                        $id_corrida
+                    );
+                }
             }
         }
+    } catch (Throwable $pushErr) {
+        error_log('[atualiza.php] Push: ' . $pushErr->getMessage());
     }
 
     if (($status == '4' || $status == 4) && $id_motorista > 0) {

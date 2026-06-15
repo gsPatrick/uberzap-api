@@ -1,4 +1,7 @@
 <?php
+// Resposta é texto puro ('ok'/'no'); warnings impressos corromperiam a resposta.
+error_reporting(E_ERROR | E_PARSE);
+ini_set('display_errors', '0');
 include("../bd/config.php");
 include("../classes/corridas.php");
 include("../classes/seguranca.php");
@@ -44,31 +47,46 @@ if ($s->compare_secret($secret_key)) {
 		exit;
 	}
 	$sh->salva_status($id_corrida, "Motorista " . $nome_motorista . " aceitou a corrida", "App Motorista");
-	$user_whatsapp = $corrida['user_whatsapp'];
-	if ($user_whatsapp) {
-		$tem_mensagens = $ubw->get_msgs($user_whatsapp);
-		if ($tem_mensagens) {
-			$wapi = new w_api(W_API_TOKEN, W_API_ID);
-			$dados_motorista = $m->get_motorista($id_motorista);
-			$nome_motorista = $dados_motorista['nome'];
-			$placa = $dados_motorista['placa'];
-			$veiculo = $dados_motorista['veiculo'];
 
-			$mensagem = "🆗 Corrida aceita por " . $nome_motorista . "\nPlaca: " . $placa . "\nVeículo: " . $veiculo;
+	// Notifica o passageiro (via SOL/IA) que o motorista aceitou — best-effort.
+	// Sem gate por get_msgs: se a corrida tem user_whatsapp, veio da IA e deve notificar.
+	try {
+		$user_whatsapp = $corrida['user_whatsapp'] ?? null;
+		if ($user_whatsapp) {
+			$wapi = new w_api(W_API_TOKEN, W_API_ID);
+			$placa = $dados_motorista['placa'] ?? '';
+			$veiculo = $dados_motorista['veiculo'] ?? '';
+
+			$mensagem = "🆗 O motorista " . $nome_motorista . " aceitou a sua corrida e está a caminho!\nPlaca: " . $placa . "\nVeículo: " . $veiculo;
 			$envio = $wapi->enviarMensagem($user_whatsapp, $mensagem);
+			error_log('[aceitar.php] WhatsApp p/ ' . $user_whatsapp . ': ' . json_encode($envio));
 		}
+	} catch (Throwable $waErr) {
+		error_log('[aceitar.php] WhatsApp: ' . $waErr->getMessage());
 	}
-	$cl = new Clientes();
-	$dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
-	if ($dados_cliente) {
-		ExpoPush::notifyPassengerTripStatus($dados_cliente, 1, $nome_motorista, $id_corrida);
+
+	// Push para passageiro do app — best-effort.
+	try {
+		$cl = new Clientes();
+		$dados_cliente = $cl->get_cliente_id($corrida['cliente_id'] ?? 0);
+		if ($dados_cliente) {
+			ExpoPush::notifyPassengerTripStatus($dados_cliente, 1, $nome_motorista, $id_corrida);
+		}
+	} catch (Throwable $pushErr) {
+		error_log('[aceitar.php] Push: ' . $pushErr->getMessage());
 	}
-	ExpoPush::notifyOnlineDriversRideUnavailable(
-		$corrida['cidade_id'],
-		$corrida['categoria_id'] ?? 0,
-		$id_corrida,
-		$id_motorista,
-		'Outro motorista aceitou esta corrida.'
-	);
+
+	try {
+		ExpoPush::notifyOnlineDriversRideUnavailable(
+			$corrida['cidade_id'],
+			$corrida['categoria_id'] ?? 0,
+			$id_corrida,
+			$id_motorista,
+			'Outro motorista aceitou esta corrida.'
+		);
+	} catch (Throwable $dErr) {
+		error_log('[aceitar.php] notifyDrivers: ' . $dErr->getMessage());
+	}
+
 	echo "ok";
 }
