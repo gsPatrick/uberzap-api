@@ -98,16 +98,19 @@ try {
     // Notificação WhatsApp (passageiro via SOL/IA) — best-effort, NUNCA quebra o update.
     try {
         $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
+        error_log('[atualiza.php] corrida=' . $id_corrida . ' status=' . $status . ' user_whatsapp=' . var_export($user_whatsapp, true));
         if ($user_whatsapp && $dados_motorista) {
             $wapi = new w_api(W_API_TOKEN, W_API_ID);
+            $envio = null;
             if ($status == 2) {
-                $wapi->enviarMensagem($user_whatsapp, '📌 O motorista chegou ao local de embarque. Placa do veículo: ' . ($dados_motorista['placa'] ?? ''));
+                $envio = $wapi->enviarMensagem($user_whatsapp, '📌 O motorista chegou ao local de embarque. Placa do veículo: ' . ($dados_motorista['placa'] ?? ''));
             } elseif ($status == 3) {
-                $wapi->enviarMensagem($user_whatsapp, '🚗 A corrida foi iniciada. Boa viagem!');
+                $envio = $wapi->enviarMensagem($user_whatsapp, '🚗 A corrida foi iniciada. Boa viagem!');
             } elseif ($status == 4) {
-                $wapi->enviarMensagem($user_whatsapp, '✅ A corrida foi finalizada. \nValor da corrida: R$ ' . ($dados_corrida['taxa'] ?? '') . "\n\nAgradecemos a preferência!");
+                $envio = $wapi->enviarMensagem($user_whatsapp, "✅ A corrida foi finalizada.\nValor da corrida: R$ " . ($dados_corrida['taxa'] ?? '') . "\n\nAgradecemos a preferência!");
                 $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
             }
+            error_log('[atualiza.php] WhatsApp status=' . $status . ' envio=' . json_encode($envio));
         }
     } catch (Throwable $waErr) {
         error_log('[atualiza.php] WhatsApp: ' . $waErr->getMessage());
