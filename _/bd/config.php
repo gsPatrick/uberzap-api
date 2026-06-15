@@ -18,6 +18,8 @@ require_once __DIR__ . '/conexao.php';
 
 
 //credenciais para bot do whatsapp
+// Instância "ubezapsol" (a mesma conectada que a SOL usa na API antiga). A anterior
+// (LITE-EP5ZVE-E8IU0I) estava com assinatura vencida -> notificações não saíam.
 define('PATCH_LIMPA_MSG', '316e783e-e696-4f42-87e8-6b9411a58796');
-define('W_API_ID', 'LITE-EP5ZVE-E8IU0I');
-define('W_API_TOKEN', 'fIBtAA1oNdQR8K92en2dZVhG6umRuAIvl');
+define('W_API_ID', 'LITE-FHEF9H-5MJZDE');
+define('W_API_TOKEN', 'RIHHldg9p8UFY4GocVGyaRVnTLFattSP5');
