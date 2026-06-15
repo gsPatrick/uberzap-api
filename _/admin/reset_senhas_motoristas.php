@@ -15,7 +15,15 @@
  *
  * APAGUE ESTE ARQUIVO logo após rodar.
  */
-header('Content-Type: application/json; charset=utf-8');
+if (php_sapi_name() !== 'cli') {
+    header('Content-Type: application/json; charset=utf-8');
+}
+
+// Permite rodar pelo terminal da VPS:  php reset_senhas_motoristas.php abc1234 SIM
+if (php_sapi_name() === 'cli') {
+    $_GET['secret']  = $argv[1] ?? '';
+    $_GET['confirm'] = $argv[2] ?? '';
+}
 
 require_once __DIR__ . '/../bd/conexao.php';   // $pdo + $secret (produção, hardcoded)
 require_once __DIR__ . '/../classes/seguranca.php';
