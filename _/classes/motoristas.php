@@ -223,6 +223,15 @@ Class motoristas {
         return $sql->execute();
     }
 
+    // Recebe a senha JÁ com hash (md5 + salt), igual ao login_motorista.
+    public function redefinir_senha($id, $senha)
+    {
+        $sql = $this->conexao->prepare("UPDATE motoristas SET senha = :senha WHERE id = :id");
+        $sql->bindValue(':senha', (string) $senha);
+        $sql->bindValue(':id', (int) $id);
+        return $sql->execute();
+    }
+
     public function get_taxa_motorista($id){
         $sql = $this->conexao->prepare("SELECT taxa FROM motoristas WHERE id = :id");
         $sql->bindValue(":id", $id);
