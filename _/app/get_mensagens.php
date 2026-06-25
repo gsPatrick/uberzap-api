@@ -15,7 +15,7 @@ $telefone = $_POST['telefone'];
 $cliente = $c ->login($telefone, $senha);
 if($cliente){
     $cliente_id = $cliente['id'];
-    $corridas = $crr->get_all_corridas_cliente($cliente_id);
+    $corridas = $crr->get_ultima_corrida_cliente($cliente_id);
     if($corridas){
         $corrida = $corridas[0];
         $mensagens = $m ->get_all_msg($corrida['id']);

@@ -40,7 +40,7 @@ $corridas_abertas = $crr->getAllCorridasAbertasCliente($cliente_id, $telefone);
 if ($corridas_abertas && count($corridas_abertas) > 0) {
     $corrida = $corridas_abertas[0];
 } else {
-    $historico = $crr->get_all_corridas_cliente($cliente_id, $telefone);
+    $historico = $crr->get_ultima_corrida_cliente($cliente_id, $telefone);
     $avaliacao_pendente = null;
 
     if ($historico && count($historico) > 0) {

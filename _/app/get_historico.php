@@ -32,8 +32,9 @@ if($cliente){
             $corridas[$key]['endereco_fim'] = $corrida['endereco_fim_txt'];
             $corridas[$key]['valor'] = $corrida['taxa'];
             
-            if($a ->get_avaliacao($corrida['id'])['nota']){
-                $corridas[$key]['avaliacao'] = $a ->get_avaliacao($corrida['id'])['nota'];
+            $avaliacao = $a ->get_avaliacao($corrida['id']);
+            if($avaliacao && isset($avaliacao['nota']) && $avaliacao['nota']){
+                $corridas[$key]['avaliacao'] = $avaliacao['nota'];
             }else{
                 $corridas[$key]['avaliacao'] = 0;
             }

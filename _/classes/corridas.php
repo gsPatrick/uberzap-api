@@ -65,6 +65,29 @@ class corridas
         return $stmt->fetchAll();
     }
 
+    /**
+     * Última corrida do cliente (a mais recente). Mesmo resultado de
+     * get_all_corridas_cliente()[0], porém com LIMIT 1 no SQL — usado pelos
+     * pollings (status da corrida / mensagens) para NÃO varrer o histórico
+     * inteiro a cada 4s. Retorna array com 0 ou 1 elemento (compatível com [0]).
+     */
+    public function get_ultima_corrida_cliente($cliente_id, $telefone = "")
+    {
+        if (!empty($telefone)) {
+            $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id OR user_whatsapp = :telefone ORDER BY id DESC LIMIT 1";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+            $stmt->bindParam(':telefone', $telefone);
+        } else {
+            $query = "SELECT * FROM corridas WHERE cliente_id = :cliente_id ORDER BY id DESC LIMIT 1";
+            $stmt = $this->conexao->prepare($query);
+            $stmt->bindParam(':cliente_id', $cliente_id);
+        }
+        $stmt->execute();
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll();
+    }
+
     public function getAllCorridasAbertasCliente($cliente_id, $telefone = "")
     {
         if (!empty($telefone)) {
