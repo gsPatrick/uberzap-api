@@ -22,6 +22,18 @@ class FcmV1
         if (self::$sa !== null) {
             return self::$sa;
         }
+        // 1) base64 do JSON (RECOMENDADO p/ .env — uma linha, sem aspas/quebras)
+        $b64 = getenv('FIREBASE_SERVICE_ACCOUNT_B64');
+        if ($b64) {
+            $decoded = base64_decode(trim($b64), true);
+            if ($decoded) {
+                $parsed = json_decode($decoded, true);
+                if (is_array($parsed)) {
+                    return self::$sa = $parsed;
+                }
+            }
+        }
+        // 2) JSON cru no env
         $json = getenv('FIREBASE_SERVICE_ACCOUNT');
         if ($json) {
             $parsed = json_decode($json, true);
@@ -29,6 +41,7 @@ class FcmV1
                 return self::$sa = $parsed;
             }
         }
+        // 3) arquivo
         $path = __DIR__ . '/../credentials/firebase-service-account.json';
         if (is_file($path)) {
             $parsed = json_decode((string) file_get_contents($path), true);
@@ -124,7 +137,9 @@ class FcmV1
         $message = [
             'message' => [
                 'token' => $fcmToken,
-                'android' => ['priority' => 'high'],
+                // FCM v1 exige HIGH/NORMAL em maiúsculo. HIGH = acorda o app mesmo
+                // em Doze/morto (necessário pro setBackgroundMessageHandler rodar).
+                'android' => ['priority' => 'HIGH'],
                 'data' => $dataStr,
             ],
         ];
