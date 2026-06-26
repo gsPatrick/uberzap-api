@@ -3,6 +3,9 @@
 //   ver últimas linhas:  /_/logs.php?secret=SEU_SECRET&n=100
 //   limpar o log:        /_/logs.php?secret=SEU_SECRET&clear=1
 header('Content-Type: text/plain; charset=utf-8');
+// conexao.php no escopo do ARQUIVO: define o global $secret que o seguranca usa
+// (se carregado só dentro do construtor, o $secret não vira global e dá 401).
+require_once __DIR__ . '/bd/conexao.php';
 require_once __DIR__ . '/classes/seguranca.php';
 
 $s = new seguranca();
