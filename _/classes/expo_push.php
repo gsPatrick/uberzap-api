@@ -240,17 +240,28 @@ class ExpoPush
                 continue;
             }
 
+            // DATA-ONLY (sem title/body): faz disparar a task em background do app,
+            // que desenha o card full-screen (Notifee, Aceitar/Recusar) + acorda a
+            // tela + som, MESMO com o app fechado/tela apagada. Com title/body o
+            // Android só mostrava uma notificação simples e a task não rodava.
             $batch[] = [
                 'to' => trim($motorista['id_signal']),
-                'title' => 'Nova corrida disponível!',
-                'body' => trim("$price — $pickup → $dest"),
-                'sound' => 'default',
                 'priority' => 'high',
-                'channelId' => 'ride_alert',
+                '_contentAvailable' => true,
                 'data' => [
                     'type' => 'ride_alert',
                     'rideId' => $rideId,
                     'channelId' => 'ride_alert',
+                    'taxa' => (string) ($corrida['taxa'] ?? ''),
+                    'endereco_ini_txt' => $corrida['endereco_ini_txt'] ?? ($corrida['endereco_ini'] ?? ''),
+                    'endereco_fim_txt' => $corrida['endereco_fim_txt'] ?? ($corrida['endereco_fim'] ?? ''),
+                    'nome_cliente' => $corrida['nome_cliente'] ?? ($corrida['cliente'] ?? ''),
+                    'nota_cliente' => (string) ($corrida['nota_cliente'] ?? ''),
+                    'km' => (string) ($corrida['km'] ?? ''),
+                    'tempo' => (string) ($corrida['tempo'] ?? ''),
+                    'f_pagamento' => $corrida['f_pagamento'] ?? '',
+                    'cidade_id' => (string) ($corrida['cidade_id'] ?? $cidadeId),
+                    'categoria_id' => (string) ($corrida['categoria_id'] ?? $categoriaId),
                 ],
             ];
         }
@@ -289,13 +300,12 @@ class ExpoPush
                 continue;
             }
 
+            // DATA-ONLY: a task em background remove o card e para o som sem
+            // mostrar nenhuma notificação visível pro motorista.
             $batch[] = [
                 'to' => trim($motorista['id_signal']),
-                'title' => 'Corrida indisponível',
-                'body' => (string) $body,
-                'sound' => 'default',
                 'priority' => 'high',
-                'channelId' => 'ride_alert',
+                '_contentAvailable' => true,
                 'data' => [
                     'type' => 'ride_alert',
                     'event' => 'ride_unavailable',
