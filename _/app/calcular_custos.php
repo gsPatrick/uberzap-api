@@ -34,7 +34,16 @@ if(isset($_POST['parada_lat']) && isset($_POST['parada_lng']) && $_POST['parada_
 }
 
 $url = 'https://maps.googleapis.com/maps/api/directions/json?origin=' . $lat_ini . ',' . $lng_ini . '&destination=' . $lat_fim . ',' . $lng_fim . $waypoints . '&key=' . KEY_GOOGLE_MAPS . '&language=pt-BR&region=BR&mode=driving';
-$json = file_get_contents($url);
+// cURL com timeout em vez de file_get_contents (que ficava pendurado sem limite,
+// deixando o cálculo levar 25-40s). Limita a ~8s.
+$ch_dir = curl_init($url);
+curl_setopt_array($ch_dir, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 8,
+]);
+$json = curl_exec($ch_dir);
+curl_close($ch_dir);
 $obj = json_decode($json);
 
 $total_distance = 0;
@@ -51,6 +60,10 @@ $polyline = isset($obj->routes[0]->overview_polyline->points) ? $obj->routes[0]-
 $retorno_fim = array();
 
 $motoristas_disponiveis = $mot->get_motoristas($cidade_id, true);
+
+// Cache de ETA (motorista->embarque) por id de motorista: evita chamar a Mapbox
+// de novo quando o mesmo motorista é o mais próximo de várias categorias.
+$etaCache = array();
 
 foreach ($categorias as $dados_categoria) {
 
@@ -120,9 +133,11 @@ foreach ($categorias as $dados_categoria) {
         $taxa = $taxa_minima;
     }
 
-    $taxa = number_format($taxa, 2, ',', '.');
-    $minutos = number_format($minutos, 0, ',', '.');
-    $km = number_format($km, 2, '.', '.');
+    // Formata SÓ a taxa, em variável local. Vírgula decimal e SEM separador de
+    // milhar (ex.: "2243,54"). Antes virava "1.593.00" e $km/$minutos eram
+    // sobrescritos -> a 2ª categoria em diante lia km como 1.59 e caía na tarifa
+    // mínima (R$ 7,00 numa viagem de 1600km). Agora $km/$minutos ficam intactos.
+    $taxa = number_format($taxa, 2, ',', '');
 
     //aqui vamos incluir os motoristas que estão disponiveis para essa categoria
     $motoristas_disponiveis_categoria = array();
@@ -150,7 +165,12 @@ foreach ($categorias as $dados_categoria) {
             $motorista_mais_proximo_id = $motoristas_ordenados[0];
             $motorista_mais_proximo = $mot->get_motorista($motorista_mais_proximo_id);
             if (isset($motorista_mais_proximo['latitude']) && isset($motorista_mais_proximo['longitude'])) {
-                $tempoDistancia = $mapbox->getDistanciaETempo($motorista_mais_proximo['latitude'], $motorista_mais_proximo['longitude'], $lat_ini, $lng_ini);
+                if (isset($etaCache[$motorista_mais_proximo_id])) {
+                    $tempoDistancia = $etaCache[$motorista_mais_proximo_id];
+                } else {
+                    $tempoDistancia = $mapbox->getDistanciaETempo($motorista_mais_proximo['latitude'], $motorista_mais_proximo['longitude'], $lat_ini, $lng_ini);
+                    $etaCache[$motorista_mais_proximo_id] = $tempoDistancia;
+                }
             } else {
                 $tempoDistancia = [
                     'tempo' => 0,
@@ -197,7 +217,7 @@ foreach ($retorno_fim['categorias'] as $key => $row) {
 }
 array_multisort($ordem, SORT_ASC, $retorno_fim['categorias']);
 //fim ordenando array de categorias pelo campo ordem
-$retorno_fim['dados']['km'] = $km;
-$retorno_fim['dados']['minutos'] = $minutos;
+$retorno_fim['dados']['km'] = number_format($km, 2, '.', '');
+$retorno_fim['dados']['minutos'] = number_format($minutos, 0, '.', '');
 $retorno_fim['dados']['polyline'] = $polyline;
 echo json_encode($retorno_fim);
