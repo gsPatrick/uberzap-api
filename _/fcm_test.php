@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/bd/conexao.php';
 require_once __DIR__ . '/classes/seguranca.php';
 require_once __DIR__ . '/classes/fcm_v1.php';
+require_once __DIR__ . '/classes/expo_push.php';
 
 $s = new seguranca();
 if (!$s->compare_secret($_GET['secret'] ?? ($_POST['secret'] ?? ''))) {
