@@ -223,6 +223,8 @@ class ExpoPush
     public static function notifyOnlineDriversNewRide($cidadeId, $categoriaId, $corrida)
     {
         require_once __DIR__ . '/uzlog.php';
+        require_once __DIR__ . '/fcm_v1.php';
+        $fcm_sent = 0;
         $m = new Motoristas();
         $motoristas = $m->get_motoristas_online_disponiveis($cidadeId);
         if (!$motoristas || !is_array($motoristas)) {
@@ -246,18 +248,43 @@ class ExpoPush
                 uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " IGNORADO: categoria $categoriaId incompativel (ids=" . ($motorista['ids_categorias'] ?? '[]') . ")");
                 continue;
             }
+            // Dados da corrida (usados tanto pelo FCM-direto quanto pelo Expo).
+            $rideData = [
+                'type' => 'ride_alert',
+                'rideId' => $rideId,
+                'channelId' => 'ride_alert',
+                'taxa' => (string) ($corrida['taxa'] ?? ''),
+                'endereco_ini_txt' => $corrida['endereco_ini_txt'] ?? ($corrida['endereco_ini'] ?? ''),
+                'endereco_fim_txt' => $corrida['endereco_fim_txt'] ?? ($corrida['endereco_fim'] ?? ''),
+                'nome_cliente' => $corrida['nome_cliente'] ?? ($corrida['cliente'] ?? ''),
+                'nota_cliente' => (string) ($corrida['nota_cliente'] ?? ''),
+                'km' => (string) ($corrida['km'] ?? ''),
+                'tempo' => (string) ($corrida['tempo'] ?? ''),
+                'f_pagamento' => $corrida['f_pagamento'] ?? '',
+                'cidade_id' => (string) ($corrida['cidade_id'] ?? $cidadeId),
+                'categoria_id' => (string) ($corrida['categoria_id'] ?? $categoriaId),
+            ];
+
+            // BUILD NOVO: tem fcm_token -> FCM DIRETO (data-only, high priority).
+            // O app recebe via setBackgroundMessageHandler MESMO MORTO e desenha o
+            // card full-screen (Notifee) + som. (É o único jeito de ter overlay com
+            // o app fechado no Android.)
+            $fcmToken = trim((string) ($motorista['fcm_token'] ?? ''));
+            if ($fcmToken !== '' && FcmV1::isConfigured()) {
+                $r = FcmV1::sendData($fcmToken, $rideData);
+                uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " FCM-direto HTTP " . ($r['code'] ?? '-') . ($r['ok'] ? ' OK' : (' FALHOU ' . ($r['error'] ?? '') . ' ' . substr((string) ($r['response'] ?? ''), 0, 180))));
+                if (!empty($r['ok'])) { $fcm_sent++; continue; }
+                // FCM falhou: cai pro Expo abaixo como fallback.
+            }
+
+            // BUILD ATUAL (sem fcm_token): Expo NOTIFICATION message — notificação +
+            // som com o app fechado (sem overlay).
             if (!self::isExpoToken($motorista['id_signal'] ?? '')) {
                 $skip_token++;
-                uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " IGNORADO: sem token Expo valido (id_signal='" . ($motorista['id_signal'] ?? '') . "')");
+                uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " IGNORADO: sem fcm_token e sem token Expo valido");
                 continue;
             }
-            uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " OK -> enviando (token " . substr((string) $motorista['id_signal'], 0, 18) . "...)");
-
-            // NOTIFICATION message (com title/body): o Android mostra a notificação
-            // NATIVAMENTE mesmo com o app FECHADO/terminado + som do canal. (Push
-            // data-only NÃO chega com o app morto no Android — limitação do Expo;
-            // a task de background só roda com o app vivo.) O `data` rico fica pro
-            // caminho com app vivo (card Notifee full-screen via listener).
+            uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " OK -> Expo (token " . substr((string) $motorista['id_signal'], 0, 18) . "...)");
             $batch[] = [
                 'to' => trim($motorista['id_signal']),
                 'title' => 'Nova corrida disponível!',
@@ -265,30 +292,17 @@ class ExpoPush
                 'sound' => 'default',
                 'priority' => 'high',
                 'channelId' => 'ride_alert',
-                'data' => [
-                    'type' => 'ride_alert',
-                    'rideId' => $rideId,
-                    'channelId' => 'ride_alert',
-                    'taxa' => (string) ($corrida['taxa'] ?? ''),
-                    'endereco_ini_txt' => $corrida['endereco_ini_txt'] ?? ($corrida['endereco_ini'] ?? ''),
-                    'endereco_fim_txt' => $corrida['endereco_fim_txt'] ?? ($corrida['endereco_fim'] ?? ''),
-                    'nome_cliente' => $corrida['nome_cliente'] ?? ($corrida['cliente'] ?? ''),
-                    'nota_cliente' => (string) ($corrida['nota_cliente'] ?? ''),
-                    'km' => (string) ($corrida['km'] ?? ''),
-                    'tempo' => (string) ($corrida['tempo'] ?? ''),
-                    'f_pagamento' => $corrida['f_pagamento'] ?? '',
-                    'cidade_id' => (string) ($corrida['cidade_id'] ?? $cidadeId),
-                    'categoria_id' => (string) ($corrida['categoria_id'] ?? $categoriaId),
-                ],
+                'data' => $rideData,
             ];
         }
 
-        if (empty($batch)) {
-            return 0;
+        $expo_sent = 0;
+        if (!empty($batch)) {
+            $result = self::sendBatch($batch);
+            $expo_sent = (int) ($result['sent'] ?? 0);
         }
-
-        $result = self::sendBatch($batch);
-        return (int) ($result['sent'] ?? 0);
+        uzlog("[push] resumo: FCM-direto=$fcm_sent Expo=$expo_sent (cat_incompat=$skip_cat sem_token=$skip_token)");
+        return $fcm_sent + $expo_sent;
     }
 
     /**

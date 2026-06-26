@@ -223,6 +223,15 @@ Class motoristas {
         return $sql->execute();
     }
 
+    /** Token FCM nativo (@react-native-firebase) — usado no push direto FCM v1. */
+    public function atualiza_fcm_token($id, $token)
+    {
+        $sql = $this->conexao->prepare("UPDATE motoristas SET fcm_token = :token WHERE id = :id");
+        $sql->bindValue(':token', (string) $token);
+        $sql->bindValue(':id', (int) $id);
+        return $sql->execute();
+    }
+
     // Recebe a senha JÁ com hash (md5 + salt), igual ao login_motorista.
     public function redefinir_senha($id, $senha)
     {
