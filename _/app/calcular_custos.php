@@ -65,6 +65,15 @@ $motoristas_disponiveis = $mot->get_motoristas($cidade_id, true);
 // de novo quando o mesmo motorista é o mais próximo de várias categorias.
 $etaCache = array();
 
+// Dinâmico de mapa (adicional por zona de embarque/destino) NÃO depende da
+// categoria. Antes era chamado dentro de um foreach que repetia a MESMA query
+// (SELECT * FROM dinamico_mapa) dezenas de vezes por categoria -> era o que
+// deixava o cálculo em ~30s. Calcula 1x aqui.
+$mapa_ini = $dm->verifica_localizacao($cidade_id, $lat_ini, $lng_ini);
+$mapa_fim = $dm->verifica_localizacao($cidade_id, $lat_fim, $lng_fim);
+$add_mapa_ini = $mapa_ini ? (float) str_replace(",", ".", $mapa_ini['adicional']) : 0;
+$add_mapa_fim = $mapa_fim ? (float) str_replace(",", ".", $mapa_fim['adicional']) : 0;
+
 foreach ($categorias as $dados_categoria) {
 
     $taxa_km = $dados_categoria['tx_km'];
@@ -93,36 +102,17 @@ foreach ($categorias as $dados_categoria) {
     }
     //fim verifica se está dentro do dinamico de horarios
 
-    //verifica se está dentro do dinamico de mapa e pega o mais caro
+    // Dinâmico de mapa: usa o valor já calculado fora do loop. Só aplica se a
+    // categoria tiver zonas configuradas (dinamico_local não vazio) — mesmo
+    // comportamento de antes, sem repetir a query.
     $taxa_add_mapa_end_ini = 0;
-    $taxa_add = 0;
-    $dinamico_mapa = $dados_categoria['dinamico_local'];
-    foreach ($dinamico_mapa as $din_mapa) {
-        $taxa_m = $dm->verifica_localizacao($cidade_id, $lat_ini, $lng_ini);
-        if ($taxa_m) {
-            $tx_add = str_replace(",", ".", $taxa_m['adicional']);
-            if ($tx_add > $taxa_add_mapa_end_ini) {
-                $taxa_add_mapa_end_ini = $tx_add;
-                $dados_retorno['dinamico_mapa_ini'] = $taxa_m;
-            }
-        }
-    }
-    //fim verifica se está dentro do dinamico de mapa
-
-    $taxa_add = 0;
     $taxa_add_mapa_end_fim = 0;
-    $dinamico_mapa = $dados_categoria['dinamico_local'];
-    foreach ($dinamico_mapa as $din_mapa) {
-        $taxa_m = $dm->verifica_localizacao($cidade_id, $lat_fim, $lng_fim);
-        if ($taxa_m) {
-            $taxa_add = str_replace(",", ".", $taxa_m['adicional']);
-            if ($taxa_add > $taxa_add_mapa_end_fim) {
-                $taxa_add_mapa_end_fim = $taxa_add;
-                $dados_retorno['dinamico_mapa_fim'] = $taxa_m;
-            }
-        }
+    if (!empty($dados_categoria['dinamico_local'])) {
+        $taxa_add_mapa_end_ini = $add_mapa_ini;
+        $taxa_add_mapa_end_fim = $add_mapa_fim;
+        if ($mapa_ini) { $dados_retorno['dinamico_mapa_ini'] = $mapa_ini; }
+        if ($mapa_fim) { $dados_retorno['dinamico_mapa_fim'] = $mapa_fim; }
     }
-    //fim verifica se está dentro do dinamico de mapa
 
     $taxa += $taxa_add_horarios + $taxa_add_mapa_end_ini + $taxa_add_mapa_end_fim;
 
