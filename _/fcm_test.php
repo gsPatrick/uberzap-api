@@ -47,13 +47,14 @@ if ($mot !== '') {
     $stmt->execute();
     $m = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($m) {
-        $online = ($m['ativo'] ?? '') === '1' && ($m['online'] ?? '') === '1';
+        $online = (int) ($m['ativo'] ?? 0) === 1 && (int) ($m['online'] ?? 0) === 1;
         $out['motorista'] = [
             'id' => $m['id'] ?? null,
             'online_para_receber' => $online,
             'ativo' => $m['ativo'] ?? null,
             'online' => $m['online'] ?? null,
             'cidade_id' => $m['cidade_id'] ?? null,
+            'ids_categorias' => $m['ids_categorias'] ?? null,
             'tem_fcm_token' => !empty($m['fcm_token']),
             'tem_expo_token' => !empty($m['id_signal']),
         ];
@@ -65,6 +66,32 @@ if ($mot !== '') {
     } else {
         $out['motorista'] = 'nao encontrado';
     }
+}
+
+// Teste da FUNÇÃO REAL: simula uma corrida e dispara pra todos os motoristas
+// online da cidade (online query + filtro de categoria + envio FCM/Expo).
+//   /_/fcm_test.php?secret=...&notify=2&cat=1
+$notifyCidade = $_GET['notify'] ?? ($_POST['notify'] ?? '');
+if ($notifyCidade !== '') {
+    $cat = $_GET['cat'] ?? ($_POST['cat'] ?? '1');
+    $corridaFake = [
+        'id' => 'TESTE',
+        'taxa' => '15,00',
+        'endereco_ini_txt' => 'TESTE - embarque',
+        'endereco_fim_txt' => 'TESTE - destino',
+        'nome_cliente' => 'TESTE',
+        'nota_cliente' => '5',
+        'km' => '4',
+        'tempo' => '10',
+        'cidade_id' => $notifyCidade,
+        'categoria_id' => $cat,
+    ];
+    $enviados = ExpoPush::notifyOnlineDriversNewRide($notifyCidade, $cat, $corridaFake);
+    $out['notify_real'] = [
+        'cidade' => $notifyCidade,
+        'categoria' => $cat,
+        'motoristas_notificados' => $enviados,
+    ];
 }
 
 echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
