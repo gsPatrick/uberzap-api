@@ -36,3 +36,16 @@ echo json_encode([
     'status' => 'ok',
     'online' => $status,
 ], JSON_UNESCAPED_UNICODE);
+
+// SEM CRON: aproveita o tráfego de GPS dos motoristas online (a cada poucos
+// segundos) pra varrer o banco e disparar o push de corridas novas de QUALQUER
+// origem (inclusive API antiga). Resposta já foi enviada — não atrasa o GPS.
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+try {
+    require_once __DIR__ . '/../classes/ride_dispatch.php';
+    RideDispatch::scanAndDispatch(2);
+} catch (\Throwable $e) {
+    // best-effort: nunca afeta o update de localização
+}

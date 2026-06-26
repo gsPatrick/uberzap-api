@@ -98,4 +98,46 @@ class RideDispatch
         uzlog("[dispatch] corrida #$id push enviado para $enviados motorista(s)");
         return $enviados;
     }
+
+    /**
+     * Varre o banco UMA vez e despacha as corridas novas pendentes (de qualquer
+     * origem). Feito pra ser chamado de endpoints de ALTA FREQUÊNCIA (ex.:
+     * atualiza_local.php) — assim funciona SEM cron, no embalo do tráfego dos
+     * motoristas online. Throttle global pra não martelar o banco.
+     * @return int corridas despachadas neste scan.
+     */
+    public static function scanAndDispatch($throttleSec = 2)
+    {
+        global $pdo;
+        self::ensureTable();
+
+        // Throttle global: no máximo 1 scan a cada $throttleSec (mtime de arquivo).
+        $lockFile = sys_get_temp_dir() . '/uz_scan.lock';
+        if (is_file($lockFile) && (time() - (int) @filemtime($lockFile)) < $throttleSec) {
+            return 0;
+        }
+        @touch($lockFile);
+
+        try {
+            $rows = $pdo->query(
+                "SELECT c.* FROM corridas c
+                 LEFT JOIN corridas_dispatch d ON d.corrida_id = c.id
+                 WHERE d.corrida_id IS NULL
+                   AND c.motorista_id = 0
+                   AND c.status = 0
+                 ORDER BY c.id ASC
+                 LIMIT 20"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+
+        $n = 0;
+        foreach ($rows as $corrida) {
+            if (self::dispatch($corrida, 'auto') >= 0) {
+                $n++;
+            }
+        }
+        return $n;
+    }
 }
