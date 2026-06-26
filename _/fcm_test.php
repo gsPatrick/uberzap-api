@@ -120,6 +120,20 @@ if ($criar !== '') {
     ];
 }
 
+// Mostra a tabela de controle corridas_dispatch (existe? quantas linhas?).
+//   /_/fcm_test.php?secret=...&ver_dispatch=1
+if (!empty($_GET['ver_dispatch'])) {
+    global $pdo;
+    $existe = $pdo->query("SHOW TABLES LIKE 'corridas_dispatch'")->fetch();
+    $out['corridas_dispatch'] = ['existe' => (bool) $existe];
+    if ($existe) {
+        $out['corridas_dispatch']['total'] = (int) $pdo->query('SELECT COUNT(*) FROM corridas_dispatch')->fetchColumn();
+        $out['corridas_dispatch']['ultimos'] = $pdo->query(
+            'SELECT corrida_id, enviados, origem, status, criado_em FROM corridas_dispatch ORDER BY criado_em DESC LIMIT 5'
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
 // Apaga corridas de teste RAW (limpeza).
 //   /_/fcm_test.php?secret=...&limpar_teste=1
 if (!empty($_GET['limpar_teste'])) {
