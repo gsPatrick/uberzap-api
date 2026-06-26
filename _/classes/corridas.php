@@ -35,7 +35,31 @@ class corridas
         $stmt->bindParam(':categoria_id', $categoria_id);
         $stmt->bindParam(':nome_cliente', $nome_cliente);
         $stmt->execute();
-        return $this->conexao->lastInsertId();
+        $id = $this->conexao->lastInsertId();
+
+        // CENTRALIZADO: notifica os motoristas online de QUALQUER corrida nova de
+        // passageiro — app, WhatsApp (ia/), painel (funcoes/) — independente da
+        // origem. Só quando é corrida nova SEM motorista (motorista_id == 0);
+        // taxímetro/corridas já atribuídas (motorista_id != 0) não disparam.
+        if ((int) $motorista_id === 0 && $id) {
+            try {
+                require_once __DIR__ . '/expo_push.php';
+                require_once __DIR__ . '/uzlog.php';
+                $corrida = $this->get_corrida_id($id);
+                if ($corrida) {
+                    uzlog("[corrida] criada #$id cidade=$cidade_id cat=$categoria_id -> push motoristas online");
+                    $enviados = ExpoPush::notifyOnlineDriversNewRide($cidade_id, $categoria_id, $corrida);
+                    uzlog("[corrida] #$id push enviado para $enviados motorista(s)");
+                }
+            } catch (\Throwable $e) {
+                // Nunca quebra a criação da corrida se o push falhar.
+                if (function_exists('uzlog')) {
+                    uzlog("[corrida] #$id ERRO no push: " . $e->getMessage());
+                }
+            }
+        }
+
+        return $id;
     }
 
     public function get_corrida_id($id)

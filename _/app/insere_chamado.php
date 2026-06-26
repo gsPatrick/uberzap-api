@@ -61,11 +61,9 @@ $status_historico->salva_status($id, "Corrida solicitada", "Aplicativo");
 
 $corrida = $corridas->get_corrida_id($id);
 if ($corrida) {
-    require_once __DIR__ . '/../classes/uzlog.php';
-    uzlog("[corrida] criada #$id cidade=$cidade_id categoria=$categoria_id -> disparando push aos motoristas online");
+    // O push aos motoristas agora é CENTRALIZADO no insere_corrida (cobre app,
+    // WhatsApp e painel). Aqui só notifica o passageiro.
     ExpoPush::notifyPassengerTripStatus($cliente, 0, 'Motorista', $id);
-    $enviados = ExpoPush::notifyOnlineDriversNewRide($cidade_id, $categoria_id, $corrida);
-    uzlog("[corrida] #$id push enviado para $enviados motorista(s)");
 }
 
 echo json_encode(array("id" => $id, "id_corrida" => $id, "status" => "ok"));
