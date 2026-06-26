@@ -95,4 +95,37 @@ if ($notifyCidade !== '') {
     ];
 }
 
+// Cria uma corrida RAW (SQL direto), SIMULANDO a API ANTIGA — sem passar pelo
+// insere_corrida/notify. Serve pra provar que o CRON pega pelo banco.
+//   /_/fcm_test.php?secret=...&criar_teste=2&cat=1
+$criar = $_GET['criar_teste'] ?? '';
+if ($criar !== '') {
+    global $pdo;
+    $catT = $_GET['cat'] ?? '1';
+    $ref = uniqid('teste_');
+    $sql = "INSERT INTO corridas
+        (ref, motorista_id, cliente_id, cidade_id, lat_ini, lng_ini, lat_fim, lng_fim,
+         km, tempo, endereco_ini_txt, endereco_fim_txt, taxa, f_pagamento,
+         status_pagamento, ref_pagamento, cupom, categoria_id, nome_cliente, status, date)
+        VALUES (:ref, 0, 0, :cidade, '0', '0', '0', '0',
+         '4', '10', 'TESTE RAW - embarque', 'TESTE RAW - destino', '15,00', 'Dinheiro',
+         0, 0, '', :cat, 'TESTE RAW', 0, NOW())";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':ref' => $ref, ':cidade' => $criar, ':cat' => $catT]);
+    $out['corrida_teste_criada'] = [
+        'id' => $pdo->lastInsertId(),
+        'cidade' => $criar,
+        'categoria' => $catT,
+        'obs' => 'RAW (simula API antiga, sem notify). Rode o cron pra ver o dispatch.',
+    ];
+}
+
+// Apaga corridas de teste RAW (limpeza).
+//   /_/fcm_test.php?secret=...&limpar_teste=1
+if (!empty($_GET['limpar_teste'])) {
+    global $pdo;
+    $del = $pdo->exec("DELETE FROM corridas WHERE nome_cliente = 'TESTE RAW'");
+    $out['corridas_teste_apagadas'] = $del;
+}
+
 echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
