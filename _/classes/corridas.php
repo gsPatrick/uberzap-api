@@ -268,11 +268,17 @@ class corridas
 
     public function aceitar($motorista_id, $id_corrida)
     {
-        $query = "UPDATE corridas SET motorista_id = :motorista_id, status = '1' WHERE id = :id";
+        // ATÔMICO: só atribui se a corrida ainda estiver LIVRE (status 0). Com
+        // vários motoristas, só UM consegue mudar status 0->1 (lock de linha do
+        // InnoDB). Quem chegar depois encontra status != 0 -> rowCount 0 -> false.
+        $query = "UPDATE corridas SET motorista_id = :motorista_id, status = '1'
+                  WHERE id = :id AND status = '0'";
         $stmt = $this->conexao->prepare($query);
         $stmt->bindParam(':motorista_id', $motorista_id);
         $stmt->bindParam(':id', $id_corrida);
-        return $stmt->execute();
+        $stmt->execute();
+        // true APENAS pro motorista que efetivamente ganhou a corrida.
+        return $stmt->rowCount() === 1;
     }
 
     public function get_corridas_disponiveis($cidade_id)
