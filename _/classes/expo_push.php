@@ -89,6 +89,9 @@ class ExpoPush
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        require_once __DIR__ . '/uzlog.php';
+        uzlog("[push] Expo respondeu HTTP $httpCode", substr((string) $response, 0, 600));
+
         if ($httpCode < 200 || $httpCode >= 300) {
             error_log('[ExpoPush] HTTP ' . $httpCode . ' — ' . $response);
             return ['ok' => false, 'response' => $response];
@@ -219,11 +222,14 @@ class ExpoPush
      */
     public static function notifyOnlineDriversNewRide($cidadeId, $categoriaId, $corrida)
     {
+        require_once __DIR__ . '/uzlog.php';
         $m = new Motoristas();
         $motoristas = $m->get_motoristas_online_disponiveis($cidadeId);
         if (!$motoristas || !is_array($motoristas)) {
+            uzlog("[push] cidade=$cidadeId: NENHUM motorista online/disponivel");
             return 0;
         }
+        uzlog("[push] cidade=$cidadeId cat=$categoriaId: " . count($motoristas) . " motorista(s) online/disponivel");
 
         $pickup = $corrida['endereco_ini_txt'] ?? $corrida['endereco_ini'] ?? 'Embarque';
         $dest = $corrida['endereco_fim_txt'] ?? $corrida['endereco_fim'] ?? 'Destino';
@@ -231,14 +237,21 @@ class ExpoPush
         $price = $taxa ? 'R$ ' . str_replace('.', ',', (string) $taxa) : '';
         $rideId = (string) ($corrida['id'] ?? '');
 
+        $skip_cat = 0;
+        $skip_token = 0;
         $batch = [];
         foreach ($motoristas as $motorista) {
             if (!self::motoristaAceitaCategoria($motorista, $categoriaId)) {
+                $skip_cat++;
+                uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " IGNORADO: categoria $categoriaId incompativel (ids=" . ($motorista['ids_categorias'] ?? '[]') . ")");
                 continue;
             }
             if (!self::isExpoToken($motorista['id_signal'] ?? '')) {
+                $skip_token++;
+                uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " IGNORADO: sem token Expo valido (id_signal='" . ($motorista['id_signal'] ?? '') . "')");
                 continue;
             }
+            uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " OK -> enviando (token " . substr((string) $motorista['id_signal'], 0, 18) . "...)");
 
             // DATA-ONLY (sem title/body): faz disparar a task em background do app,
             // que desenha o card full-screen (Notifee, Aceitar/Recusar) + acorda a

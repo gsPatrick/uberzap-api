@@ -25,4 +25,6 @@ if ($id_motorista < 1 || $id_signal === '') {
 
 $m = new Motoristas();
 $m->atualiza_push_token($id_motorista, $id_signal);
+require_once __DIR__ . '/../classes/uzlog.php';
+uzlog("[token] motorista #$id_motorista salvou id_signal=" . substr($id_signal, 0, 24) . "...");
 echo json_encode(['status' => 'ok'], JSON_UNESCAPED_UNICODE);
