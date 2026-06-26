@@ -253,14 +253,18 @@ class ExpoPush
             }
             uzlog("[push]   motorista #" . ($motorista['id'] ?? '?') . " OK -> enviando (token " . substr((string) $motorista['id_signal'], 0, 18) . "...)");
 
-            // DATA-ONLY (sem title/body): faz disparar a task em background do app,
-            // que desenha o card full-screen (Notifee, Aceitar/Recusar) + acorda a
-            // tela + som, MESMO com o app fechado/tela apagada. Com title/body o
-            // Android só mostrava uma notificação simples e a task não rodava.
+            // NOTIFICATION message (com title/body): o Android mostra a notificação
+            // NATIVAMENTE mesmo com o app FECHADO/terminado + som do canal. (Push
+            // data-only NÃO chega com o app morto no Android — limitação do Expo;
+            // a task de background só roda com o app vivo.) O `data` rico fica pro
+            // caminho com app vivo (card Notifee full-screen via listener).
             $batch[] = [
                 'to' => trim($motorista['id_signal']),
+                'title' => 'Nova corrida disponível!',
+                'body' => trim("$price — $pickup → $dest"),
+                'sound' => 'default',
                 'priority' => 'high',
-                '_contentAvailable' => true,
+                'channelId' => 'ride_alert',
                 'data' => [
                     'type' => 'ride_alert',
                     'rideId' => $rideId,
