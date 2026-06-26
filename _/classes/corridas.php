@@ -116,6 +116,25 @@ class corridas
         return $stmt->fetchAll();
     }
 
+    /**
+     * Histórico do motorista: só finalizadas/canceladas (status 4,5,9), já
+     * filtrado e LIMITADO no SQL (com índice em motorista_id). Evita o
+     * SELECT * sem limite que estourava o timeout na tela de histórico.
+     */
+    public function get_historico_motorista($motorista_id, $limite = 100)
+    {
+        $limite = (int) $limite;
+        if ($limite < 1) { $limite = 100; }
+        $query = "SELECT * FROM corridas
+                  WHERE motorista_id = :motorista_id AND status IN ('4','5','9')
+                  ORDER BY id DESC LIMIT " . $limite;
+        $stmt = $this->conexao->prepare($query);
+        $stmt->bindParam(':motorista_id', $motorista_id);
+        $stmt->execute();
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll();
+    }
+
     public function get_all_corridas_cidade($cidade_id, $ativas = true)
     {
         if ($ativas) {

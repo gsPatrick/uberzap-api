@@ -74,16 +74,11 @@ try {
     $corridas = [];
 
     if ($modo === 'recent' || $modo === 'todas' || $data === '') {
-        $raw = $c->get_all_corridas_motorista($id_motorista);
+        // Filtro de status + LIMIT no SQL (com índice) — não varre a tabela toda.
+        $raw = $c->get_historico_motorista($id_motorista, 100);
         if (is_array($raw)) {
-            foreach ($raw as $row) {
-                $st = (string) ($row['status'] ?? '');
-                if (in_array($st, ['4', '5', '9'], true)) {
-                    $corridas[] = $row;
-                }
-            }
+            $corridas = $raw;
         }
-        $corridas = array_slice($corridas, 0, 100);
     } else {
         $dataNorm = str_replace('/', '-', $data);
         $ts = strtotime($dataNorm);
