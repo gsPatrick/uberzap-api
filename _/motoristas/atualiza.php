@@ -138,6 +138,23 @@ try {
         error_log('[atualiza.php] Push: ' . $pushErr->getMessage());
     }
 
+    // Webhook do BOT/IA — notifica o passageiro da mudança de status (a IA manda
+    // a mensagem no WhatsApp). arrived=2, started=3, completed=4. Best-effort.
+    try {
+        require_once __DIR__ . '/../classes/bot_webhook.php';
+        $st = (int) $status;
+        $mapa_webhook = [2 => 'arrived', 3 => 'started', 4 => 'completed'];
+        if (isset($mapa_webhook[$st])) {
+            $extra_webhook = [];
+            if ($st === 4) {
+                $extra_webhook['valor'] = $dados_corrida['taxa'] ?? '';
+            }
+            BotWebhook::notificarPassageiro($dados_corrida, $mapa_webhook[$st], $extra_webhook);
+        }
+    } catch (Throwable $whErr) {
+        error_log('[atualiza.php] BotWebhook: ' . $whErr->getMessage());
+    }
+
     if (($status == '4' || $status == 4) && $id_motorista > 0) {
         $m->atualiza_disponibilidade($id_motorista, 1);
     }

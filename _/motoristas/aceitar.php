@@ -48,6 +48,18 @@ if ($s->compare_secret($secret_key)) {
 	}
 	$sh->salva_status($id_corrida, "Motorista " . $nome_motorista . " aceitou a corrida", "App Motorista");
 
+	// Webhook do BOT/IA — passageiro é avisado que o motorista aceitou.
+	try {
+		require_once __DIR__ . '/../classes/bot_webhook.php';
+		BotWebhook::notificarPassageiro($corrida, 'accepted', [
+			'nome_motorista' => $dados_motorista['nome'] ?? '',
+			'veiculo' => $dados_motorista['veiculo'] ?? '',
+			'placa' => $dados_motorista['placa'] ?? '',
+		]);
+	} catch (Throwable $whErr) {
+		error_log('[aceitar.php] BotWebhook: ' . $whErr->getMessage());
+	}
+
 	// Notifica o passageiro (via SOL/IA) que o motorista aceitou — best-effort.
 	// Sem gate por get_msgs: se a corrida tem user_whatsapp, veio da IA e deve notificar.
 	try {
