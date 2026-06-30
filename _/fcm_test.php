@@ -142,4 +142,16 @@ if (!empty($_GET['limpar_teste'])) {
     $out['corridas_teste_apagadas'] = $del;
 }
 
+// Testa o webhook do BOT/IA isoladamente (sem criar corrida).
+//   /_/fcm_test.php?secret=...&test_webhook=arrived&wpp=TESTE_WEBHOOK@lid
+if (!empty($_GET['test_webhook'])) {
+    require_once __DIR__ . '/classes/bot_webhook.php';
+    $code = BotWebhook::notificarPassageiro(
+        ['id' => 'TESTE', 'user_whatsapp' => $_GET['wpp'] ?? 'TESTE_WEBHOOK@lid', 'taxa' => '12,34'],
+        $_GET['test_webhook'],
+        ['nome_motorista' => 'Motorista Teste', 'veiculo' => 'Carro Teste', 'placa' => 'ABC1D23', 'valor' => '12,34']
+    );
+    $out['test_webhook'] = ['status' => $_GET['test_webhook'], 'http_code' => $code, 'ok' => ($code >= 200 && $code < 300)];
+}
+
 echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
