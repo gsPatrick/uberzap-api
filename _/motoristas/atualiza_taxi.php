@@ -135,23 +135,39 @@ try {
         error_log('[atualiza_taxi.php] Financeiro: ' . $finErr->getMessage());
     }
 
-    // 3) Push passageiro
-    if (!empty($corrida['cliente_id'])) {
-        $dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
-        if ($dados_cliente) {
-            ExpoPush::notifyPassengerTripStatus(
-                $dados_cliente,
-                4,
-                $dados_motorista['nome'] ?? 'Motorista',
-                $id_corrida
-            );
-        }
-    }
-
-    // 4) Motorista disponível para novas corridas (online = 1)
+    // Motorista disponível para novas corridas (crítico — antes de responder).
     $m->atualiza_disponibilidade($id_motorista, 1);
 
+    // Responde o app AGORA; notificações rodam DEPOIS (não travam o motorista).
     echo 'ok';
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+
+    // Push pro passageiro do APP.
+    try {
+        if (!empty($corrida['cliente_id'])) {
+            $dados_cliente = $cl->get_cliente_id($corrida['cliente_id']);
+            if ($dados_cliente) {
+                ExpoPush::notifyPassengerTripStatus($dados_cliente, 4, $dados_motorista['nome'] ?? 'Motorista', $id_corrida);
+            }
+        }
+    } catch (Throwable $pushErr) {
+        error_log('[atualiza_taxi.php] Push: ' . $pushErr->getMessage());
+    }
+
+    // Webhook do BOT/IA — COMPLETED (a IA avisa o passageiro: agradecimento + valor
+    // a pagar). Era isso que faltava: a finalização vem por AQUI, não pelo
+    // atualiza.php. Idempotente (status 4 já sai no topo), então não duplica.
+    try {
+        require_once __DIR__ . '/../classes/bot_webhook.php';
+        require_once __DIR__ . '/../classes/uzlog.php';
+        uzlog("[atualiza_taxi] corrida=$id_corrida FINALIZADA valor=$taxa_fmt wpp=" . ((($corrida['user_whatsapp'] ?? '') !== '') ? '1' : '0'));
+        BotWebhook::notificarPassageiro($corrida, 'completed', ['valor' => $taxa_fmt]);
+    } catch (Throwable $whErr) {
+        error_log('[atualiza_taxi.php] BotWebhook: ' . $whErr->getMessage());
+    }
+    exit;
 } catch (Throwable $e) {
     error_log('[atualiza_taxi.php] ' . $e->getMessage());
     http_response_code(500);
