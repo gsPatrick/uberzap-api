@@ -96,25 +96,17 @@ try {
         }
     }
 
-    // Notificação WhatsApp (passageiro via SOL/IA) — best-effort, NUNCA quebra o update.
+    // Os avisos de status ao passageiro (chegou/iniciou/finalizou) agora saem
+    // SÓ pela IA Sol (via webhook, abaixo). O envio DIRETO por WhatsApp foi
+    // REMOVIDO pra não duplicar. Mantém apenas a limpeza do histórico do bot ao
+    // finalizar a corrida (não é aviso de status).
     try {
         $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
-        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza corrida=$id_corrida status=$status user_whatsapp=" . var_export($user_whatsapp, true) . "\n", FILE_APPEND);
-        if ($user_whatsapp && $dados_motorista) {
-            $wapi = new w_api(W_API_TOKEN, W_API_ID);
-            $envio = null;
-            if ($status == 2) {
-                $envio = $wapi->enviarMensagem($user_whatsapp, '📌 O motorista chegou ao local de embarque. Placa do veículo: ' . ($dados_motorista['placa'] ?? ''));
-            } elseif ($status == 3) {
-                $envio = $wapi->enviarMensagem($user_whatsapp, '🚗 A corrida foi iniciada. Boa viagem!');
-            } elseif ($status == 4) {
-                $envio = $wapi->enviarMensagem($user_whatsapp, "✅ A corrida foi finalizada.\nValor da corrida: R$ " . ($dados_corrida['taxa'] ?? '') . "\n\nAgradecemos a preferência!");
-                $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
-            }
-            @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza envio status=$status -> " . json_encode($envio) . "\n", FILE_APPEND);
+        if ($user_whatsapp && (int) $status === 4) {
+            $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
         }
     } catch (Throwable $waErr) {
-        @file_put_contents(__DIR__ . '/../admin/uploads/wa_debug.log', date('c') . " atualiza ERRO: " . $waErr->getMessage() . "\n", FILE_APPEND);
+        error_log('[atualiza.php] limpaMensagens: ' . $waErr->getMessage());
     }
 
     // Push (passageiro do app) — best-effort, NUNCA quebra o update.

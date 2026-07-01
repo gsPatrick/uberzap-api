@@ -60,22 +60,8 @@ if ($s->compare_secret($secret_key)) {
 		error_log('[aceitar.php] BotWebhook: ' . $whErr->getMessage());
 	}
 
-	// Notifica o passageiro (via SOL/IA) que o motorista aceitou — best-effort.
-	// Sem gate por get_msgs: se a corrida tem user_whatsapp, veio da IA e deve notificar.
-	try {
-		$user_whatsapp = $corrida['user_whatsapp'] ?? null;
-		if ($user_whatsapp) {
-			$wapi = new w_api(W_API_TOKEN, W_API_ID);
-			$placa = $dados_motorista['placa'] ?? '';
-			$veiculo = $dados_motorista['veiculo'] ?? '';
-
-			$mensagem = "🆗 O motorista " . $nome_motorista . " aceitou a sua corrida e está a caminho!\nPlaca: " . $placa . "\nVeículo: " . $veiculo;
-			$envio = $wapi->enviarMensagem($user_whatsapp, $mensagem);
-			error_log('[aceitar.php] WhatsApp p/ ' . $user_whatsapp . ': ' . json_encode($envio));
-		}
-	} catch (Throwable $waErr) {
-		error_log('[aceitar.php] WhatsApp: ' . $waErr->getMessage());
-	}
+	// (O aviso "motorista aceitou" ao passageiro sai SÓ pela IA Sol, via o
+	// webhook acima. Envio direto por WhatsApp REMOVIDO pra não duplicar.)
 
 	// Push para passageiro do app — best-effort.
 	try {
