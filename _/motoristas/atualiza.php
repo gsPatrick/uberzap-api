@@ -48,12 +48,22 @@ try {
     $cl = new Clientes();
     $ubw = new usuarios_bot_whats();
 
+    // Lê o status ANTES pra detectar mudança REAL. O app pode reenviar o MESMO
+    // status várias vezes (o taxímetro reenvia) — sem essa guarda, o webhook
+    // duplicaria a mensagem da IA e, pior, o financeiro (status 4) debitaria o
+    // motorista em dobro. Só dispara os efeitos se o status realmente mudou.
+    $dados_antes = $c->get_corrida_id($id_corrida);
+    $status_anterior = $dados_antes ? (int) ($dados_antes['status'] ?? -1) : -1;
+    $status_mudou = ((int) $status !== $status_anterior);
+
     $c->set_status($id_corrida, $status);
     if ($taxa) {
         $c->atualiza_taxa($id_corrida, $taxa);
     }
-    $status_string = $c->status_string($status);
-    $sh->salva_status($id_corrida, $status_string, 'App Motorista');
+    if ($status_mudou) {
+        $status_string = $c->status_string($status);
+        $sh->salva_status($id_corrida, $status_string, 'App Motorista');
+    }
 
     $dados_corrida = $c->get_corrida_id($id_corrida);
     if (!$dados_corrida) {
@@ -64,7 +74,7 @@ try {
     $id_motorista = (int) ($dados_corrida['motorista_id'] ?? 0);
     $dados_motorista = $id_motorista > 0 ? $m->get_motorista($id_motorista) : null;
 
-    if (($status == '4' || $status == 4) && $dados_motorista) {
+    if ($status_mudou && ($status == '4' || $status == 4) && $dados_motorista) {
         try {
             $saldo_motorista = (float) str_replace(',', '.', (string) ($dados_motorista['saldo'] ?? 0));
             $taxa_pct = (float) str_replace(',', '.', (string) ($dados_motorista['taxa'] ?? 0));
@@ -102,7 +112,7 @@ try {
     // finalizar a corrida (não é aviso de status).
     try {
         $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
-        if ($user_whatsapp && (int) $status === 4) {
+        if ($status_mudou && $user_whatsapp && (int) $status === 4) {
             $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
         }
     } catch (Throwable $waErr) {
@@ -112,7 +122,7 @@ try {
     // Push (passageiro do app) — best-effort, NUNCA quebra o update.
     try {
         $id_cliente = $dados_corrida['cliente_id'] ?? null;
-        if ($id_cliente && $dados_motorista) {
+        if ($status_mudou && $id_cliente && $dados_motorista) {
             $dados_cliente_push = $cl->get_cliente_id($id_cliente);
             if ($dados_cliente_push) {
                 $st = (int) $status;
@@ -136,7 +146,7 @@ try {
         require_once __DIR__ . '/../classes/bot_webhook.php';
         $st = (int) $status;
         $mapa_webhook = [2 => 'arrived', 3 => 'started', 4 => 'completed'];
-        if (isset($mapa_webhook[$st])) {
+        if ($status_mudou && isset($mapa_webhook[$st])) {
             $extra_webhook = [];
             if ($st === 4) {
                 $extra_webhook['valor'] = $dados_corrida['taxa'] ?? '';
@@ -147,7 +157,7 @@ try {
         error_log('[atualiza.php] BotWebhook: ' . $whErr->getMessage());
     }
 
-    if (($status == '4' || $status == 4) && $id_motorista > 0) {
+    if ($status_mudou && ($status == '4' || $status == 4) && $id_motorista > 0) {
         $m->atualiza_disponibilidade($id_motorista, 1);
     }
 
