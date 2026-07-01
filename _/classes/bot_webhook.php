@@ -35,25 +35,40 @@ class BotWebhook
             'user_id' => $userId,
             'status'  => $status,
         ], $extra);
+        $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $rideId = $corrida['id'] ?? '?';
 
-        try {
-            $ch = curl_init(self::URL);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_TIMEOUT => 8,
-            ]);
-            $resp = curl_exec($ch);
-            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            uzlog('[bot-webhook] corrida #' . ($corrida['id'] ?? '?') . " status=$status http=$code " . substr((string) $resp, 0, 120));
-            return $code;
-        } catch (\Throwable $e) {
-            uzlog('[bot-webhook] ERRO status=' . $status . ': ' . $e->getMessage());
-            return 0;
+        // Retry: até 3 tentativas se não voltar 2xx (cobre timeout/instabilidade
+        // do n8n) — foi o que causava "deixou de notificar" em alguns.
+        $code = 0;
+        $resp = '';
+        for ($tent = 1; $tent <= 3; $tent++) {
+            try {
+                $ch = curl_init(self::URL);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_POSTFIELDS => $body,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT => 5,
+                    CURLOPT_TIMEOUT => 12,
+                ]);
+                $resp = curl_exec($ch);
+                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $err = curl_error($ch);
+                curl_close($ch);
+            } catch (\Throwable $e) {
+                $code = 0;
+                $err = $e->getMessage();
+            }
+            uzlog('[bot-webhook] corrida #' . $rideId . " status=$status tent=$tent http=$code " . ($code ? substr((string) $resp, 0, 100) : ('ERRO ' . ($err ?? ''))));
+            if ($code >= 200 && $code < 300) {
+                break; // sucesso
+            }
+            if ($tent < 3) {
+                usleep(700000); // 0.7s antes de tentar de novo
+            }
         }
+        return $code;
     }
 }

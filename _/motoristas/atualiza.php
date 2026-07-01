@@ -106,62 +106,59 @@ try {
         }
     }
 
-    // Os avisos de status ao passageiro (chegou/iniciou/finalizou) agora saem
-    // SÓ pela IA Sol (via webhook, abaixo). O envio DIRETO por WhatsApp foi
-    // REMOVIDO pra não duplicar. Mantém apenas a limpeza do histórico do bot ao
-    // finalizar a corrida (não é aviso de status).
-    try {
-        $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
-        if ($status_mudou && $user_whatsapp && (int) $status === 4) {
-            $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
-        }
-    } catch (Throwable $waErr) {
-        error_log('[atualiza.php] limpaMensagens: ' . $waErr->getMessage());
-    }
-
-    // Push (passageiro do app) — best-effort, NUNCA quebra o update.
-    try {
-        $id_cliente = $dados_corrida['cliente_id'] ?? null;
-        if ($status_mudou && $id_cliente && $dados_motorista) {
-            $dados_cliente_push = $cl->get_cliente_id($id_cliente);
-            if ($dados_cliente_push) {
-                $st = (int) $status;
-                if (in_array($st, [2, 3, 4, 5], true)) {
-                    ExpoPush::notifyPassengerTripStatus(
-                        $dados_cliente_push,
-                        $st,
-                        $dados_motorista['nome'] ?? 'Motorista',
-                        $id_corrida
-                    );
-                }
-            }
-        }
-    } catch (Throwable $pushErr) {
-        error_log('[atualiza.php] Push: ' . $pushErr->getMessage());
-    }
-
-    // Webhook do BOT/IA — notifica o passageiro da mudança de status (a IA manda
-    // a mensagem no WhatsApp). arrived=2, started=3, completed=4. Best-effort.
-    try {
-        require_once __DIR__ . '/../classes/bot_webhook.php';
-        $st = (int) $status;
-        $mapa_webhook = [2 => 'arrived', 3 => 'started', 4 => 'completed'];
-        if ($status_mudou && isset($mapa_webhook[$st])) {
-            $extra_webhook = [];
-            if ($st === 4) {
-                $extra_webhook['valor'] = $dados_corrida['taxa'] ?? '';
-            }
-            BotWebhook::notificarPassageiro($dados_corrida, $mapa_webhook[$st], $extra_webhook);
-        }
-    } catch (Throwable $whErr) {
-        error_log('[atualiza.php] BotWebhook: ' . $whErr->getMessage());
-    }
-
+    // Disponibilidade do motorista ao finalizar (crítico — antes de responder).
     if ($status_mudou && ($status == '4' || $status == 4) && $id_motorista > 0) {
         $m->atualiza_disponibilidade($id_motorista, 1);
     }
 
+    // Responde o APP agora. As notificações (webhook/push) rodam DEPOIS, sem
+    // travar o motorista mesmo se o n8n estiver lento (o webhook tem retry).
     echo 'ok';
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+
+    if ($status_mudou) {
+        // Limpeza do histórico do bot ao finalizar (não é aviso de status).
+        try {
+            $user_whatsapp = $dados_corrida['user_whatsapp'] ?? null;
+            if ($user_whatsapp && (int) $status === 4) {
+                $ubw->limpaMensagens(PATCH_LIMPA_MSG, $user_whatsapp);
+            }
+        } catch (Throwable $waErr) {
+            error_log('[atualiza.php] limpaMensagens: ' . $waErr->getMessage());
+        }
+
+        // Push pro passageiro do APP (não é WhatsApp/IA).
+        try {
+            $id_cliente = $dados_corrida['cliente_id'] ?? null;
+            if ($id_cliente && $dados_motorista) {
+                $dados_cliente_push = $cl->get_cliente_id($id_cliente);
+                if ($dados_cliente_push) {
+                    $st = (int) $status;
+                    if (in_array($st, [2, 3, 4, 5], true)) {
+                        ExpoPush::notifyPassengerTripStatus($dados_cliente_push, $st, $dados_motorista['nome'] ?? 'Motorista', $id_corrida);
+                    }
+                }
+            }
+        } catch (Throwable $pushErr) {
+            error_log('[atualiza.php] Push: ' . $pushErr->getMessage());
+        }
+
+        // Webhook do BOT/IA — a IA Sol manda a mensagem no WhatsApp.
+        try {
+            require_once __DIR__ . '/../classes/bot_webhook.php';
+            $st = (int) $status;
+            $mapa_webhook = [2 => 'arrived', 3 => 'started', 4 => 'completed'];
+            if (isset($mapa_webhook[$st])) {
+                $extra_webhook = ($st === 4) ? ['valor' => $dados_corrida['taxa'] ?? ''] : [];
+                BotWebhook::notificarPassageiro($dados_corrida, $mapa_webhook[$st], $extra_webhook);
+            }
+        } catch (Throwable $whErr) {
+            error_log('[atualiza.php] BotWebhook: ' . $whErr->getMessage());
+        }
+    }
+    exit;
 } catch (Throwable $e) {
     error_log('[atualiza.php] ' . $e->getMessage());
     http_response_code(500);
