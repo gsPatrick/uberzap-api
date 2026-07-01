@@ -174,8 +174,9 @@ class RideDispatch
     /**
      * Converte embarque/destino de COORDENADA pra endereço e salva no banco.
      * Assim todo mundo (notificação, card, taxímetro, polling) lê o endereço pronto.
+     * Público: usado também pelo busca_corridas_disponiveis.php (polling do app).
      */
-    private static function resolverEnderecos(array $corrida)
+    public static function resolverEnderecos(array $corrida)
     {
         $id = (int) ($corrida['id'] ?? 0);
         $ini = (string) ($corrida['endereco_ini_txt'] ?? '');

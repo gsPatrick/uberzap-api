@@ -94,6 +94,17 @@ if ($s->compare_secret($secret_key)) {
 			if (!in_array($id_categoria, $ids_categorias)) {
 				unset($corridas[$key]);
 			} else {
+				// Resolve coordenada -> endereço (embarque/destino) e salva no banco,
+				// pra o card NUNCA mostrar coordenada, mesmo pegando pelo polling.
+				try {
+					require_once __DIR__ . '/../classes/ride_dispatch.php';
+					$resolvido = RideDispatch::resolverEnderecos($value);
+					$corridas[$key]['endereco_ini_txt'] = $resolvido['endereco_ini_txt'] ?? $value['endereco_ini_txt'];
+					$corridas[$key]['endereco_fim_txt'] = $resolvido['endereco_fim_txt'] ?? $value['endereco_fim_txt'];
+				} catch (Throwable $geoErr) {
+					error_log('[busca_corridas] geocode: ' . $geoErr->getMessage());
+				}
+
 				$latitude_embarque = $value['lat_ini'];
 				$longitude_embarque = $value['lng_ini'];
 				$tempoeKm = $mapbox->getDistanciaETempo($latitude_motorista, $longitude_motorista, $latitude_embarque, $longitude_embarque);
