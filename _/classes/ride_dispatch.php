@@ -79,6 +79,10 @@ class RideDispatch
             return -1;
         }
 
+        // Resolve coordenada -> endereço (embarque/destino) e SALVA no banco, pra
+        // TODOS lerem o endereço pronto (notificação, card, taxímetro, polling).
+        $corrida = self::resolverEnderecos($corrida);
+
         // Ganhou o claim -> dispara.
         $cidade = $corrida['cidade_id'] ?? 0;
         $cat = $corrida['categoria_id'] ?? 0;
@@ -139,5 +143,63 @@ class RideDispatch
             }
         }
         return $n;
+    }
+
+    /** true se o texto é uma coordenada "lat,lng". */
+    private static function isCoord($v)
+    {
+        return preg_match('/^\s*-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?\s*$/', (string) $v) === 1;
+    }
+
+    /** Uma coordenada -> endereço legível (Mapbox). Mantém o texto se já for endereço/falhar. */
+    private static function coordParaEndereco($mapbox, $texto)
+    {
+        $s = trim((string) $texto);
+        if (!self::isCoord($s)) {
+            return $s;
+        }
+        $p = explode(',', $s);
+        $lat = trim($p[0]);
+        $lng = isset($p[1]) ? trim($p[1]) : '';
+        $r = $mapbox->getEndereco($lat, $lng);
+        $place = $r['features'][0]['place_name'] ?? '';
+        if ($place === '') {
+            return $s; // falhou -> mantém a coordenada (não piora)
+        }
+        // Encurta o place_name do Mapbox (rua, bairro, cidade) — sem país/CEP.
+        $partes = array_map('trim', explode(',', $place));
+        return implode(', ', array_slice($partes, 0, 3));
+    }
+
+    /**
+     * Converte embarque/destino de COORDENADA pra endereço e salva no banco.
+     * Assim todo mundo (notificação, card, taxímetro, polling) lê o endereço pronto.
+     */
+    private static function resolverEnderecos(array $corrida)
+    {
+        $id = (int) ($corrida['id'] ?? 0);
+        $ini = (string) ($corrida['endereco_ini_txt'] ?? '');
+        $fim = (string) ($corrida['endereco_fim_txt'] ?? '');
+        if (!self::isCoord($ini) && !self::isCoord($fim)) {
+            return $corrida; // nada a resolver
+        }
+        try {
+            require_once __DIR__ . '/../bd/config.php'; // MAPBOX_KEY
+            require_once __DIR__ . '/mapbox.php';
+            $mapbox = new Mapbox(MAPBOX_KEY);
+            $novoIni = self::coordParaEndereco($mapbox, $ini);
+            $novoFim = self::coordParaEndereco($mapbox, $fim);
+            if ($novoIni !== $ini || $novoFim !== $fim) {
+                require_once __DIR__ . '/corridas.php';
+                $c = new corridas();
+                $c->atualiza_enderecos($id, $novoIni, $novoFim);
+                $corrida['endereco_ini_txt'] = $novoIni;
+                $corrida['endereco_fim_txt'] = $novoFim;
+                uzlog("[dispatch] #$id enderecos resolvidos ini='$novoIni' fim='$novoFim'");
+            }
+        } catch (\Throwable $e) {
+            uzlog("[dispatch] #$id ERRO geocode: " . $e->getMessage());
+        }
+        return $corrida;
     }
 }

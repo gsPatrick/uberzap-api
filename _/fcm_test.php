@@ -105,16 +105,18 @@ if ($criar !== '') {
     $wppT = $_GET['wpp'] ?? ''; // WhatsApp do passageiro (pra testar o webhook/msg)
     $motT = (int) ($_GET['motid'] ?? 0); // motorista atribuido (pra testar status)
     $statT = (int) ($_GET['status_ini'] ?? 0);
+    $iniT = $_GET['ini'] ?? 'TESTE RAW - embarque'; // endereco/coord de embarque
+    $fimT = $_GET['fim'] ?? 'TESTE RAW - destino';  // endereco/coord de destino
     $ref = uniqid('teste_');
     $sql = "INSERT INTO corridas
         (ref, motorista_id, cliente_id, cidade_id, lat_ini, lng_ini, lat_fim, lng_fim,
          km, tempo, endereco_ini_txt, endereco_fim_txt, taxa, f_pagamento,
          status_pagamento, ref_pagamento, cupom, categoria_id, nome_cliente, status, user_whatsapp, date)
         VALUES (:ref, :mot, 0, :cidade, '0', '0', '0', '0',
-         '4', '10', 'TESTE RAW - embarque', 'TESTE RAW - destino', '15,00', 'Dinheiro',
+         '4', '10', :ini, :fim, '15,00', 'Dinheiro',
          0, 0, '', :cat, 'TESTE RAW', :stat, :wpp, NOW())";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([':ref' => $ref, ':cidade' => $criar, ':cat' => $catT, ':mot' => $motT, ':stat' => $statT, ':wpp' => $wppT]);
+    $stmt->execute([':ref' => $ref, ':cidade' => $criar, ':cat' => $catT, ':mot' => $motT, ':stat' => $statT, ':wpp' => $wppT, ':ini' => $iniT, ':fim' => $fimT]);
     $out['corrida_teste_criada'] = [
         'id' => $pdo->lastInsertId(),
         'cidade' => $criar,

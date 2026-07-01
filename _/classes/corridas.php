@@ -352,6 +352,17 @@ class corridas
     }
 
 
+    /** Atualiza os endereços de embarque/destino (usado quando vinham como coordenada). */
+    public function atualiza_enderecos($id_corrida, $endereco_ini_txt, $endereco_fim_txt)
+    {
+        $query = "UPDATE corridas SET endereco_ini_txt = :ini, endereco_fim_txt = :fim WHERE id = :id";
+        $stmt = $this->conexao->prepare($query);
+        $stmt->bindParam(':ini', $endereco_ini_txt);
+        $stmt->bindParam(':fim', $endereco_fim_txt);
+        $stmt->bindParam(':id', $id_corrida);
+        return $stmt->execute();
+    }
+
     public function atualiza_taxa($id_corrida, $taxa_corrida)
     {
         $query = "UPDATE corridas SET taxa = :taxa_corrida WHERE id = :id_corrida";
