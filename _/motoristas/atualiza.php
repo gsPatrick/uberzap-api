@@ -56,6 +56,10 @@ try {
     $status_anterior = $dados_antes ? (int) ($dados_antes['status'] ?? -1) : -1;
     $status_mudou = ((int) $status !== $status_anterior);
 
+    // DIAGNÓSTICO: registra TODA chamada (pra ver se a corrida real cai aqui).
+    require_once __DIR__ . '/../classes/uzlog.php';
+    uzlog("[atualiza] corrida=$id_corrida novo=$status anterior=$status_anterior mudou=" . ($status_mudou ? '1' : '0') . " wpp=" . ((($dados_antes['user_whatsapp'] ?? '') !== '') ? '1' : '0'));
+
     $c->set_status($id_corrida, $status);
     if ($taxa) {
         $c->atualiza_taxa($id_corrida, $taxa);

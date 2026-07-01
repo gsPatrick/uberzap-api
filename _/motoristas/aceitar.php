@@ -27,6 +27,9 @@ if ($s->compare_secret($secret_key)) {
 	}
 	//verifica se status da corrida é 0
 	$corrida = $c->get_corrida_id($id_corrida);
+	// DIAGNÓSTICO: registra TODA chamada de aceite (pra ver se cai na nossa API).
+	require_once __DIR__ . '/../classes/uzlog.php';
+	uzlog("[aceitar] corrida=$id_corrida motorista=$id_motorista status_atual=" . ($corrida['status'] ?? '?') . " wpp=" . ((($corrida['user_whatsapp'] ?? '') !== '') ? '1' : '0'));
 	if (!$corrida) {
 		echo "no";
 		exit;
